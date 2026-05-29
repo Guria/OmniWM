@@ -157,10 +157,6 @@ struct CommandPaletteEnvironment {
         keyUp?.post(tap: .cgSessionEventTap)
     }
 
-    var isSecureInputActive: () -> Bool = {
-        IsSecureEventInputEnabled()
-    }
-
     var isAccessibilityTrusted: () -> Bool = {
         AXIsProcessTrusted()
     }
@@ -939,14 +935,14 @@ final class CommandPaletteController: NSObject, ObservableObject, NSWindowDelega
                       let target,
                       !environment.isLockScreenActive(wmController),
                       environment.isAccessibilityTrusted(),
-                      !environment.isSecureInputActive(),
+                      true,
                       self.focus(target: target.focusTarget)
                 else {
                     return
                 }
                 environment.scheduleClipboardPaste {
                     guard environment.isAccessibilityTrusted(),
-                          !environment.isSecureInputActive(),
+                          true,
                           environment.frontmostApplication()?.processIdentifier == target.focusTarget.app.processIdentifier
                     else {
                         return

@@ -197,50 +197,6 @@ struct HotkeySettingsView: View {
             subtitle: "Search commands, edit shortcuts, and review registration problems without leaving the settings window."
         ) {
             Section("Controls") {
-                LabeledContent("Advanced") {
-                    Toggle("Show Advanced", isOn: $showsAdvancedHotkeys)
-                        .toggleStyle(.switch)
-                }
-
-                if showsSequenceControls {
-                    LabeledContent("Leader Key") {
-                        HStack(spacing: 8) {
-                            if recordingTarget == .leader {
-                                KeyRecorderView(
-                                    accessibilityLabel: "Recording leader key",
-                                    hyperTrigger: settings.hyperTrigger,
-                                    onCapture: handleLeaderCaptured,
-                                    onCancel: cancelRecording
-                                )
-                                .frame(minWidth: 180, idealWidth: 210, minHeight: 34)
-                            } else {
-                                Button {
-                                    startLeaderRecording()
-                                } label: {
-                                    Text(HotkeySettingsDisplayModel.displayString(for: settings.effectiveLeaderKey))
-                                        .font(.system(.body, design: .monospaced))
-                                        .lineLimit(1)
-                                        .frame(minWidth: 112, alignment: .center)
-                                }
-                                .buttonStyle(.bordered)
-                                .help("Change leader key. Current leader: \(HotkeySettingsDisplayModel.humanReadableString(for: settings.effectiveLeaderKey))")
-                                .accessibilityLabel("Change leader key")
-                                .accessibilityValue(HotkeySettingsDisplayModel.humanReadableString(for: settings.effectiveLeaderKey))
-                            }
-                        }
-                    }
-
-                    LabeledContent("Sequence Timeout") {
-                        Stepper(value: $settings.sequenceTimeoutMilliseconds, in: 100 ... 3000, step: 100) {
-                            Text("\(settings.sequenceTimeoutMilliseconds) ms")
-                                .monospacedDigit()
-                        }
-                        .onChange(of: settings.sequenceTimeoutMilliseconds) { _, _ in
-                            controller.updateHotkeyBindings(settings.hotkeyBindings)
-                        }
-                    }
-                }
-
                 LabeledContent("Nehir Modifier") {
                     HStack(spacing: 8) {
                         if recordingTarget == .hyperTrigger {

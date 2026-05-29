@@ -74,7 +74,6 @@ final class WMController {
     let settings: SettingsStore
     let workspaceManager: WorkspaceManager
     private let hotkeys = HotkeyCenter()
-    let secureInputMonitor = SecureInputMonitor()
     let lockScreenObserver = LockScreenObserver()
     var isLockScreenActive: Bool = false {
         didSet {
@@ -354,7 +353,6 @@ final class WMController {
         let shouldEnableHotkeys = desiredHotkeysEnabled
             && isEnabled
             && hasStartedServices
-            && !serviceLifecycleManager.isSecureInputActive
         hotkeysEnabled = shouldEnableHotkeys
         shouldEnableHotkeys ? hotkeys.start() : hotkeys.stop()
     }

@@ -24,7 +24,6 @@ final class ServiceLifecycleManager {
     private var sleepObserver: NSObjectProtocol?
     private var wakeObserver: NSObjectProtocol?
     private var permissionCheckerTask: Task<Void, Never>?
-    private(set) var isSecureInputActive = false
     var accessibilityPermissionStreamProviderForTests: ((Bool) -> AsyncStream<Bool>)?
     var accessibilityPermissionStateProviderForTests: (() -> Bool)?
     var accessibilityPermissionRequestHandlerForTests: (() -> Bool)?
@@ -100,7 +99,6 @@ final class ServiceLifecycleManager {
         }
 
         performStartupRefresh()
-        startSecureInputMonitor()
         startLockScreenObserver()
     }
 
@@ -115,31 +113,6 @@ final class ServiceLifecycleManager {
             controller.serviceLifecycleManager.handleUnlockDetected()
         }
         controller.lockScreenObserver.start()
-    }
-
-    private func startSecureInputMonitor() {
-        guard let controller else { return }
-        controller.secureInputMonitor.start { [weak self] isSecure in
-            self?.handleSecureInputChange(isSecure)
-        }
-    }
-
-    private func handleSecureInputChange(_ isSecure: Bool) {
-        guard let controller else { return }
-        let didSuppressActiveHotkeys = isSecure && controller.hotkeysEnabled
-        isSecureInputActive = isSecure
-        controller.reconcileEnabledAndHotkeysState()
-        if isSecure {
-            if didSuppressActiveHotkeys {
-                SecureInputIndicatorController.shared.show()
-            }
-        } else {
-            SecureInputIndicatorController.shared.hide()
-        }
-    }
-
-    func handleSecureInputChangeForTests(_ isSecure: Bool) {
-        handleSecureInputChange(isSecure)
     }
 
     private func setupDisplayObserver() {
@@ -405,9 +378,6 @@ final class ServiceLifecycleManager {
             wakeObserver = nil
         }
 
-        controller.secureInputMonitor.stop()
-        isSecureInputActive = false
-        SecureInputIndicatorController.shared.hide()
         controller.lockScreenObserver.stop()
         permissionCheckerTask?.cancel()
         permissionCheckerTask = nil

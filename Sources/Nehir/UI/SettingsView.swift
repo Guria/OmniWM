@@ -137,8 +137,8 @@ struct GeneralSettingsTab: View {
                 SettingsSliderRow(
                     label: "Scroll Sensitivity",
                     value: $settings.scrollSensitivity,
-                    range: 0.1 ... 100.0,
-                    step: 0.1,
+                    range: 0.5 ... 20.0,
+                    step: 0.5,
                     valueText: String(format: "%.1f", settings.scrollSensitivity) + "x"
                 )
 

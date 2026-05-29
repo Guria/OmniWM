@@ -28,9 +28,9 @@ enum HotkeyRegistrationFailureReason: Equatable {
     case prefixAmbiguity
     case invalidSequenceRoot
     case sequenceRootConflict
-    case hyperLeaderConflict
-    case unsupportedHyperModifiers
-    case unsupportedSequenceHyperStep
+    case modifierLeaderConflict
+    case unsupportedModifierKeys
+    case unsupportedSequenceModifierStep
     case eventTapUnavailable
     case systemReserved
 }
@@ -42,7 +42,7 @@ struct HotkeySequenceNode: Equatable {
 
 struct HotkeyRegistrationPlan: Equatable {
     let registrations: [HotkeyPlannedRegistration]
-    let virtualHyperRegistrations: [HotkeyPlannedRegistration]
+    let virtualModifierRegistrations: [HotkeyPlannedRegistration]
     var failures: [HotkeyCommand: HotkeyRegistrationFailureReason]
     let sequenceNodes: [HotkeySequenceNode]
     let sequenceCommands: Set<HotkeyCommand>
@@ -50,24 +50,24 @@ struct HotkeyRegistrationPlan: Equatable {
 
 struct HotkeyRuntimeConfiguration: Equatable {
     let bindings: [HotkeyBinding]
-    let hyperTrigger: HyperKeyTrigger
+    let modifierTrigger: ModifierKeyTrigger
     let leaderKey: KeyBinding
     let sequenceTimeoutMilliseconds: Int
 
     init(
         bindings: [HotkeyBinding] = [],
-        hyperTrigger: HyperKeyTrigger = .default,
+        modifierTrigger: ModifierKeyTrigger = .default,
         leaderKey: KeyBinding = .defaultLeader,
         sequenceTimeoutMilliseconds: Int = 800
     ) {
         self.bindings = bindings
-        self.hyperTrigger = hyperTrigger
+        self.modifierTrigger = modifierTrigger
         self.leaderKey = leaderKey.isUnassigned ? .defaultLeader : leaderKey
         self.sequenceTimeoutMilliseconds = max(100, sequenceTimeoutMilliseconds)
     }
 }
 
-enum VirtualHyperKeyDownDecision: Equatable {
+enum VirtualModifierKeyDownDecision: Equatable {
     case passThrough
     case suppress
     case dispatch(HotkeyRegistrationAction)
@@ -138,7 +138,7 @@ struct SmallValueSet<Element: Equatable>: Equatable {
     }
 }
 
-struct VirtualHyperEventState: Equatable {
+struct VirtualModifierEventState: Equatable {
     var isActive = false
     var consumedKeyCodes = SmallValueSet<UInt32>()
     var consumedMouseButtons = SmallValueSet<Int64>()
@@ -149,14 +149,14 @@ struct VirtualHyperEventState: Equatable {
         consumedMouseButtons.removeAll(keepingCapacity: true)
     }
 
-    mutating func handleTriggerMouseDown(_ button: Int64, trigger: HyperKeyTrigger) -> Bool {
+    mutating func handleTriggerMouseDown(_ button: Int64, trigger: ModifierKeyTrigger) -> Bool {
         guard trigger.mouseButtonNumber == button else { return false }
         isActive = true
         consumedMouseButtons.insert(button)
         return true
     }
 
-    mutating func handleTriggerMouseUp(_ button: Int64, trigger: HyperKeyTrigger) -> Bool {
+    mutating func handleTriggerMouseUp(_ button: Int64, trigger: ModifierKeyTrigger) -> Bool {
         guard trigger.mouseButtonNumber == button else {
             return consumedMouseButtons.remove(button) != nil
         }
@@ -165,14 +165,14 @@ struct VirtualHyperEventState: Equatable {
         return true
     }
 
-    mutating func handleTriggerKeyDown(_ keyCode: UInt32, trigger: HyperKeyTrigger) -> Bool {
+    mutating func handleTriggerKeyDown(_ keyCode: UInt32, trigger: ModifierKeyTrigger) -> Bool {
         guard trigger.keyboardKeyCode == keyCode else { return false }
         isActive = true
         consumedKeyCodes.insert(keyCode)
         return true
     }
 
-    mutating func handleTriggerKeyUp(_ keyCode: UInt32, trigger: HyperKeyTrigger) -> Bool {
+    mutating func handleTriggerKeyUp(_ keyCode: UInt32, trigger: ModifierKeyTrigger) -> Bool {
         guard trigger.keyboardKeyCode == keyCode else {
             return consumedKeyCodes.remove(keyCode) != nil
         }
@@ -184,7 +184,7 @@ struct VirtualHyperEventState: Equatable {
     mutating func handleTriggerFlagsChanged(
         keyCode: UInt32,
         flags: CGEventFlags,
-        trigger: HyperKeyTrigger
+        trigger: ModifierKeyTrigger
     ) -> Bool {
         guard trigger.keyboardKeyCode == keyCode else { return false }
 
@@ -215,10 +215,10 @@ struct VirtualHyperEventState: Equatable {
     mutating func handleKeyDown(
         keyCode: UInt32,
         isAutorepeat: Bool,
-        trigger: HyperKeyTrigger,
+        trigger: ModifierKeyTrigger,
         sequenceIsActive: Bool,
         action: HotkeyRegistrationAction?
-    ) -> VirtualHyperKeyDownDecision {
+    ) -> VirtualModifierKeyDownDecision {
         if handleTriggerKeyDown(keyCode, trigger: trigger) {
             return .suppress
         }
@@ -260,7 +260,7 @@ final class HotkeyCenter {
     var onCommand: ((HotkeyCommand) -> Void)?
     var sequenceEventAccessProvider: () -> Bool = { HotkeyCenter.sequenceEventAccessGranted() }
     var sequenceTapSetupOverride: (() -> Bool)?
-    var virtualHyperTapSetupOverride: (() -> Bool)?
+    var virtualModifierTapSetupOverride: (() -> Bool)?
 
     private var refs: [EventHotKeyRef?] = []
     private var handler: EventHandlerRef?
@@ -276,17 +276,17 @@ final class HotkeyCenter {
     private var sequenceRunLoopSource: CFRunLoopSource?
     private var pendingSequenceCommands: [HotkeyCommand] = []
     private var pendingSequenceDrainScheduled = false
-    private var virtualHyperRegistrations: [KeyBinding: HotkeyRegistrationAction] = [:]
-    private var virtualHyperTap: CFMachPort?
-    private var virtualHyperRunLoopSource: CFRunLoopSource?
-    private var virtualHyperState = VirtualHyperEventState()
+    private var virtualModifierRegistrations: [KeyBinding: HotkeyRegistrationAction] = [:]
+    private var virtualModifierTap: CFMachPort?
+    private var virtualModifierRunLoopSource: CFRunLoopSource?
+    private var virtualModifierState = VirtualModifierEventState()
 
     private(set) var registrationFailures: [HotkeyCommand: HotkeyRegistrationFailureReason] = [:]
 
     deinit {
         MainActor.assumeIsolated {
             stopSequenceTap()
-            stopVirtualHyperTap()
+            stopVirtualModifierTap()
         }
     }
 
@@ -331,14 +331,14 @@ final class HotkeyCenter {
 
     func updateBindings(
         _ newBindings: [HotkeyBinding],
-        hyperTrigger newHyperTrigger: HyperKeyTrigger = .default,
+        modifierTrigger newModifierTrigger: ModifierKeyTrigger = .default,
         leaderKey newLeaderKey: KeyBinding = .defaultLeader,
         sequenceTimeoutMilliseconds newSequenceTimeoutMilliseconds: Int = 800,
         force: Bool = false
     ) {
         let nextConfiguration = HotkeyRuntimeConfiguration(
             bindings: newBindings,
-            hyperTrigger: newHyperTrigger,
+            modifierTrigger: newModifierTrigger,
             leaderKey: newLeaderKey,
             sequenceTimeoutMilliseconds: newSequenceTimeoutMilliseconds
         )
@@ -359,40 +359,40 @@ final class HotkeyCenter {
         sequenceNodes.removeAll()
         pendingSequenceCommands.removeAll()
         pendingSequenceDrainScheduled = false
-        virtualHyperRegistrations.removeAll()
+        virtualModifierRegistrations.removeAll()
         stopSequenceTap()
-        stopVirtualHyperTap()
+        stopVirtualModifierTap()
     }
 
     private func registerHotkeys() {
         unregisterAll()
         var plan = Self.registrationPlan(
             for: configuration.bindings,
-            hyperTrigger: configuration.hyperTrigger,
+            modifierTrigger: configuration.modifierTrigger,
             leaderKey: configuration.leaderKey,
             sequenceEventAccessGranted: sequenceEventAccessProvider()
         )
         sequenceNodes = plan.sequenceNodes
-        virtualHyperRegistrations = Dictionary(
-            plan.virtualHyperRegistrations.map { ($0.binding, $0.action) },
+        virtualModifierRegistrations = Dictionary(
+            plan.virtualModifierRegistrations.map { ($0.binding, $0.action) },
             uniquingKeysWith: { first, _ in first }
         )
-        var virtualHyperUnavailableActions: [HotkeyRegistrationAction] = []
+        var virtualModifierUnavailableActions: [HotkeyRegistrationAction] = []
         if !plan.sequenceCommands.isEmpty, !setupSequenceTapIfNeeded() {
             for command in plan.sequenceCommands {
                 plan.failures[command] = .eventTapUnavailable
             }
             sequenceNodes.removeAll()
-            virtualHyperRegistrations = virtualHyperRegistrations.filter { _, action in
+            virtualModifierRegistrations = virtualModifierRegistrations.filter { _, action in
                 if case .sequencePrefix = action {
                     return false
                 }
                 return true
             }
         }
-        if !virtualHyperRegistrations.isEmpty, configuration.hyperTrigger.requiresEventTap, !setupVirtualHyperTapIfNeeded() {
-            virtualHyperUnavailableActions = Array(virtualHyperRegistrations.values)
-            virtualHyperRegistrations.removeAll()
+        if !virtualModifierRegistrations.isEmpty, configuration.modifierTrigger.requiresEventTap, !setupVirtualModifierTapIfNeeded() {
+            virtualModifierUnavailableActions = Array(virtualModifierRegistrations.values)
+            virtualModifierRegistrations.removeAll()
         }
         registrationFailures = plan.failures
         var nextId: UInt32 = 1
@@ -420,7 +420,7 @@ final class HotkeyCenter {
             nextId += 1
         }
 
-        for action in virtualHyperUnavailableActions {
+        for action in virtualModifierUnavailableActions {
             markEventTapUnavailableFailure(for: action)
         }
     }
@@ -585,10 +585,10 @@ final class HotkeyCenter {
         }
     }
 
-    private func setupVirtualHyperTapIfNeeded() -> Bool {
-        if virtualHyperTap != nil { return true }
-        if let virtualHyperTapSetupOverride {
-            return virtualHyperTapSetupOverride()
+    private func setupVirtualModifierTapIfNeeded() -> Bool {
+        if virtualModifierTap != nil { return true }
+        if let virtualModifierTapSetupOverride {
+            return virtualModifierTapSetupOverride()
         }
         let eventMask =
             (1 << CGEventType.keyDown.rawValue) |
@@ -600,11 +600,11 @@ final class HotkeyCenter {
             guard let userInfo else { return Unmanaged.passUnretained(event) }
             let center = Unmanaged<HotkeyCenter>.fromOpaque(userInfo).takeUnretainedValue()
             return MainActor.assumeIsolated {
-                center.handleVirtualHyperEvent(type: type, event: event)
+                center.handleVirtualModifierEvent(type: type, event: event)
             }
         }
         let selfPtr = Unmanaged.passUnretained(self).toOpaque()
-        virtualHyperTap = CGEvent.tapCreate(
+        virtualModifierTap = CGEvent.tapCreate(
             tap: .cgSessionEventTap,
             place: .headInsertEventTap,
             options: .defaultTap,
@@ -612,10 +612,10 @@ final class HotkeyCenter {
             callback: callback,
             userInfo: selfPtr
         )
-        guard let tap = virtualHyperTap else { return false }
-        virtualHyperRunLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
-        guard let source = virtualHyperRunLoopSource else {
-            virtualHyperTap = nil
+        guard let tap = virtualModifierTap else { return false }
+        virtualModifierRunLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
+        guard let source = virtualModifierRunLoopSource else {
+            virtualModifierTap = nil
             return false
         }
         CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
@@ -623,15 +623,15 @@ final class HotkeyCenter {
         return true
     }
 
-    private func stopVirtualHyperTap() {
-        virtualHyperState.reset()
-        if let source = virtualHyperRunLoopSource {
+    private func stopVirtualModifierTap() {
+        virtualModifierState.reset()
+        if let source = virtualModifierRunLoopSource {
             CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes)
-            virtualHyperRunLoopSource = nil
+            virtualModifierRunLoopSource = nil
         }
-        if let tap = virtualHyperTap {
+        if let tap = virtualModifierTap {
             CGEvent.tapEnable(tap: tap, enable: false)
-            virtualHyperTap = nil
+            virtualModifierTap = nil
         }
     }
 
@@ -714,61 +714,61 @@ final class HotkeyCenter {
         return nil
     }
 
-    private func handleVirtualHyperEvent(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
+    private func handleVirtualModifierEvent(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
         switch type {
         case .tapDisabledByTimeout:
-            if let tap = virtualHyperTap {
+            if let tap = virtualModifierTap {
                 CGEvent.tapEnable(tap: tap, enable: true)
             }
             return Unmanaged.passUnretained(event)
         case .tapDisabledByUserInput:
-            virtualHyperState.reset()
+            virtualModifierState.reset()
             return Unmanaged.passUnretained(event)
         case .otherMouseDown:
-            return handleVirtualHyperMouseDown(event)
+            return handleVirtualModifierMouseDown(event)
         case .otherMouseUp:
-            return handleVirtualHyperMouseUp(event)
+            return handleVirtualModifierMouseUp(event)
         case .keyDown:
-            return handleVirtualHyperKeyDown(event)
+            return handleVirtualModifierKeyDown(event)
         case .keyUp:
-            return handleVirtualHyperKeyUp(event)
+            return handleVirtualModifierKeyUp(event)
         case .flagsChanged:
-            return handleVirtualHyperFlagsChanged(event)
+            return handleVirtualModifierFlagsChanged(event)
         default:
             return Unmanaged.passUnretained(event)
         }
     }
 
-    private func handleVirtualHyperMouseDown(_ event: CGEvent) -> Unmanaged<CGEvent>? {
+    private func handleVirtualModifierMouseDown(_ event: CGEvent) -> Unmanaged<CGEvent>? {
         let button = event.getIntegerValueField(.mouseEventButtonNumber)
-        guard virtualHyperState.handleTriggerMouseDown(button, trigger: configuration.hyperTrigger) else {
+        guard virtualModifierState.handleTriggerMouseDown(button, trigger: configuration.modifierTrigger) else {
             return Unmanaged.passUnretained(event)
         }
         return nil
     }
 
-    private func handleVirtualHyperMouseUp(_ event: CGEvent) -> Unmanaged<CGEvent>? {
+    private func handleVirtualModifierMouseUp(_ event: CGEvent) -> Unmanaged<CGEvent>? {
         let button = event.getIntegerValueField(.mouseEventButtonNumber)
-        return virtualHyperState.handleTriggerMouseUp(button, trigger: configuration.hyperTrigger)
+        return virtualModifierState.handleTriggerMouseUp(button, trigger: configuration.modifierTrigger)
             ? nil
             : Unmanaged.passUnretained(event)
     }
 
-    private func handleVirtualHyperKeyDown(_ event: CGEvent) -> Unmanaged<CGEvent>? {
+    private func handleVirtualModifierKeyDown(_ event: CGEvent) -> Unmanaged<CGEvent>? {
         let keyCode = UInt32(event.getIntegerValueField(.keyboardEventKeycode))
         let modifiers = matchingModifiers(from: event.flags)
         let action: HotkeyRegistrationAction?
-        if virtualHyperState.isActive, activeSequenceNode == nil {
-            action = virtualHyperRegistrations[
-                KeyBinding(keyCode: keyCode, modifiers: modifiers, usesHyper: true)
+        if virtualModifierState.isActive, activeSequenceNode == nil {
+            action = virtualModifierRegistrations[
+                KeyBinding(keyCode: keyCode, modifiers: modifiers, usesModifier: true)
             ]
         } else {
             action = nil
         }
-        let decision = virtualHyperState.handleKeyDown(
+        let decision = virtualModifierState.handleKeyDown(
             keyCode: keyCode,
             isAutorepeat: event.getIntegerValueField(.keyboardEventAutorepeat) != 0,
-            trigger: configuration.hyperTrigger,
+            trigger: configuration.modifierTrigger,
             sequenceIsActive: activeSequenceNode != nil,
             action: action
         )
@@ -778,27 +778,27 @@ final class HotkeyCenter {
         case .suppress:
             return nil
         case let .dispatch(action):
-            dispatchVirtualHyperActionLater(action)
+            dispatchVirtualModifierActionLater(action)
             return nil
         }
     }
 
-    private func handleVirtualHyperKeyUp(_ event: CGEvent) -> Unmanaged<CGEvent>? {
+    private func handleVirtualModifierKeyUp(_ event: CGEvent) -> Unmanaged<CGEvent>? {
         let keyCode = UInt32(event.getIntegerValueField(.keyboardEventKeycode))
-        return virtualHyperState.handleTriggerKeyUp(keyCode, trigger: configuration.hyperTrigger)
+        return virtualModifierState.handleTriggerKeyUp(keyCode, trigger: configuration.modifierTrigger)
             ? nil
             : Unmanaged.passUnretained(event)
     }
 
-    private func handleVirtualHyperFlagsChanged(_ event: CGEvent) -> Unmanaged<CGEvent>? {
+    private func handleVirtualModifierFlagsChanged(_ event: CGEvent) -> Unmanaged<CGEvent>? {
         let keyCode = UInt32(event.getIntegerValueField(.keyboardEventKeycode))
-        guard virtualHyperState.handleTriggerFlagsChanged(keyCode: keyCode, flags: event.flags, trigger: configuration.hyperTrigger) else {
+        guard virtualModifierState.handleTriggerFlagsChanged(keyCode: keyCode, flags: event.flags, trigger: configuration.modifierTrigger) else {
             return Unmanaged.passUnretained(event)
         }
         return nil
     }
 
-    private func dispatchVirtualHyperActionLater(_ action: HotkeyRegistrationAction) {
+    private func dispatchVirtualModifierActionLater(_ action: HotkeyRegistrationAction) {
         switch action {
         case let .command(command):
             dispatchSequenceCommandLater(command)
@@ -808,7 +808,7 @@ final class HotkeyCenter {
     }
 
     private func matchingModifiers(from flags: CGEventFlags) -> UInt32 {
-        Self.carbonModifiers(from: flags) & ~configuration.hyperTrigger.modifierMaskToExclude
+        Self.carbonModifiers(from: flags) & ~configuration.modifierTrigger.modifierMaskToExclude
     }
 
     private static func carbonModifiers(from flags: CGEventFlags) -> UInt32 {
@@ -823,26 +823,26 @@ final class HotkeyCenter {
 
 #if DEBUG
 extension HotkeyCenter {
-    func prepareVirtualHyperForTesting(
-        hyperTrigger: HyperKeyTrigger,
+    func prepareVirtualModifierForTesting(
+        modifierTrigger: ModifierKeyTrigger,
         registrations: [KeyBinding: HotkeyRegistrationAction],
         isActive: Bool = false,
         sequenceIsActive: Bool = false
     ) {
         configuration = HotkeyRuntimeConfiguration(
             bindings: configuration.bindings,
-            hyperTrigger: hyperTrigger,
+            modifierTrigger: modifierTrigger,
             leaderKey: configuration.leaderKey,
             sequenceTimeoutMilliseconds: configuration.sequenceTimeoutMilliseconds
         )
-        virtualHyperRegistrations = registrations
-        virtualHyperState.reset()
-        virtualHyperState.isActive = isActive
+        virtualModifierRegistrations = registrations
+        virtualModifierState.reset()
+        virtualModifierState.isActive = isActive
         activeSequenceNode = sequenceIsActive ? 0 : nil
     }
 
-    func handleVirtualHyperEventForTesting(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
-        handleVirtualHyperEvent(type: type, event: event)
+    func handleVirtualModifierEventForTesting(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
+        handleVirtualModifierEvent(type: type, event: event)
     }
 
     func drainPendingSequenceCommandsForTesting() {
@@ -863,7 +863,7 @@ extension HotkeyCenter {
 
     nonisolated static func registrationPlan(
         for bindings: [HotkeyBinding],
-        hyperTrigger: HyperKeyTrigger = .default,
+        modifierTrigger: ModifierKeyTrigger = .default,
         leaderKey: KeyBinding = .defaultLeader,
         sequenceEventAccessGranted: Bool = true
     ) -> HotkeyRegistrationPlan {
@@ -888,12 +888,12 @@ extension HotkeyCenter {
             }
         }
 
-        func usesUnsupportedHyperModifiers(_ binding: KeyBinding) -> Bool {
-            guard binding.usesHyper else { return false }
-            if hyperTrigger == .system {
+        func usesUnsupportedModifierCombo(_ binding: KeyBinding) -> Bool {
+            guard binding.usesModifier else { return false }
+            if modifierTrigger == .system {
                 return binding.modifiers != 0
             }
-            let excludedModifiers = hyperTrigger.modifierMaskToExclude
+            let excludedModifiers = modifierTrigger.modifierMaskToExclude
             return excludedModifiers != 0 && binding.modifiers & excludedModifiers != 0
         }
 
@@ -929,7 +929,7 @@ extension HotkeyCenter {
             for rhsIndex in directCandidates.indices where rhsIndex > lhsIndex {
                 let lhs = directCandidates[lhsIndex]
                 let rhs = directCandidates[rhsIndex]
-                guard lhs.binding.conflicts(with: rhs.binding, hyperTrigger: hyperTrigger) else { continue }
+                guard lhs.binding.conflicts(with: rhs.binding, modifierTrigger: modifierTrigger) else { continue }
                 mark(lhs.command, .duplicateBinding)
                 mark(rhs.command, .duplicateBinding)
             }
@@ -939,18 +939,18 @@ extension HotkeyCenter {
             for rhsIndex in sequenceCandidates.indices where rhsIndex > lhsIndex {
                 let lhs = sequenceCandidates[lhsIndex]
                 let rhs = sequenceCandidates[rhsIndex]
-                if lhs.resolved.conflictsElementwise(with: rhs.resolved, hyperTrigger: hyperTrigger) {
+                if lhs.resolved.conflictsElementwise(with: rhs.resolved, modifierTrigger: modifierTrigger) {
                     mark(lhs.command, .duplicateSequence)
                     mark(rhs.command, .duplicateSequence)
-                } else if lhs.resolved.isConflictPrefix(of: rhs.resolved, hyperTrigger: hyperTrigger) ||
-                    rhs.resolved.isConflictPrefix(of: lhs.resolved, hyperTrigger: hyperTrigger)
+                } else if lhs.resolved.isConflictPrefix(of: rhs.resolved, modifierTrigger: modifierTrigger) ||
+                    rhs.resolved.isConflictPrefix(of: lhs.resolved, modifierTrigger: modifierTrigger)
                 {
                     mark(lhs.command, .prefixAmbiguity)
                     mark(rhs.command, .prefixAmbiguity)
                 } else if let lhsRoot = lhs.resolved.first,
                           let rhsRoot = rhs.resolved.first,
                           lhsRoot != rhsRoot,
-                          lhsRoot.conflicts(with: rhsRoot, hyperTrigger: hyperTrigger)
+                          lhsRoot.conflicts(with: rhsRoot, modifierTrigger: modifierTrigger)
                 {
                     mark(lhs.command, .sequenceRootConflict)
                     mark(rhs.command, .sequenceRootConflict)
@@ -959,43 +959,43 @@ extension HotkeyCenter {
         }
 
         for candidate in sequenceCandidates {
-            if candidate.resolved.dropFirst().contains(where: \.usesHyper) {
-                mark(candidate.command, .unsupportedSequenceHyperStep)
+            if candidate.resolved.dropFirst().contains(where: \.usesModifier) {
+                mark(candidate.command, .unsupportedSequenceModifierStep)
             }
-            if candidate.resolved.contains(where: usesUnsupportedHyperModifiers) {
-                mark(candidate.command, .unsupportedHyperModifiers)
+            if candidate.resolved.contains(where: usesUnsupportedModifierCombo) {
+                mark(candidate.command, .unsupportedModifierKeys)
             }
-            if candidate.resolved.contains(where: { $0.physicalKeyConflicts(with: hyperTrigger) }) {
-                mark(candidate.command, .hyperLeaderConflict)
+            if candidate.resolved.contains(where: { $0.physicalKeyConflicts(with: modifierTrigger) }) {
+                mark(candidate.command, .modifierLeaderConflict)
             }
             guard let root = candidate.resolved.first else { continue }
-            for directCandidate in directCandidates where directCandidate.binding.conflicts(with: root, hyperTrigger: hyperTrigger) {
+            for directCandidate in directCandidates where directCandidate.binding.conflicts(with: root, modifierTrigger: modifierTrigger) {
                 mark(candidate.command, .sequenceRootConflict)
                 mark(directCandidate.command, .sequenceRootConflict)
             }
         }
 
-        for candidate in directCandidates where candidate.binding.physicalKeyConflicts(with: hyperTrigger) {
-            mark(candidate.command, .hyperLeaderConflict)
+        for candidate in directCandidates where candidate.binding.physicalKeyConflicts(with: modifierTrigger) {
+            mark(candidate.command, .modifierLeaderConflict)
         }
 
-        for candidate in directCandidates where usesUnsupportedHyperModifiers(candidate.binding) {
-            mark(candidate.command, .unsupportedHyperModifiers)
+        for candidate in directCandidates where usesUnsupportedModifierCombo(candidate.binding) {
+            mark(candidate.command, .unsupportedModifierKeys)
         }
 
 
         var registrations: [HotkeyPlannedRegistration] = []
-        var virtualHyperRegistrations: [HotkeyPlannedRegistration] = []
+        var virtualModifierRegistrations: [HotkeyPlannedRegistration] = []
         for candidate in directCandidates {
             let binding = candidate.binding
             let command = candidate.command
             guard failures[command] == nil else { continue }
-            if binding.usesHyper, hyperTrigger.requiresEventTap {
-                virtualHyperRegistrations.append(HotkeyPlannedRegistration(binding: binding, command: command))
+            if binding.usesModifier, modifierTrigger.requiresEventTap {
+                virtualModifierRegistrations.append(HotkeyPlannedRegistration(binding: binding, command: command))
             }
-            let carbonBinding = binding.usesHyper && hyperTrigger.requiresEventTap
+            let carbonBinding = binding.usesModifier && modifierTrigger.requiresEventTap
                 ? nil
-                : binding.carbonCompatibilityBinding(for: hyperTrigger) ?? (binding.usesHyper ? nil : binding)
+                : binding.carbonCompatibilityBinding(for: modifierTrigger) ?? (binding.usesModifier ? nil : binding)
             if let carbonBinding {
                 registrations.append(HotkeyPlannedRegistration(binding: carbonBinding, command: command))
             }
@@ -1020,12 +1020,12 @@ extension HotkeyCenter {
             sequenceCommands.insert(candidate.command)
             if let root = candidate.resolved.first, registeredRoots.insert(root).inserted {
                 let action = HotkeyRegistrationAction.sequencePrefix(root)
-                if root.usesHyper, hyperTrigger.requiresEventTap {
-                    virtualHyperRegistrations.append(HotkeyPlannedRegistration(binding: root, action: action))
+                if root.usesModifier, modifierTrigger.requiresEventTap {
+                    virtualModifierRegistrations.append(HotkeyPlannedRegistration(binding: root, action: action))
                 }
-                let carbonRoot = root.usesHyper && hyperTrigger.requiresEventTap
+                let carbonRoot = root.usesModifier && modifierTrigger.requiresEventTap
                     ? nil
-                    : root.carbonCompatibilityBinding(for: hyperTrigger) ?? (root.usesHyper ? nil : root)
+                    : root.carbonCompatibilityBinding(for: modifierTrigger) ?? (root.usesModifier ? nil : root)
                 if let carbonRoot {
                     registrations.append(
                         HotkeyPlannedRegistration(
@@ -1039,7 +1039,7 @@ extension HotkeyCenter {
 
         return HotkeyRegistrationPlan(
             registrations: registrations,
-            virtualHyperRegistrations: virtualHyperRegistrations,
+            virtualModifierRegistrations: virtualModifierRegistrations,
             failures: failures,
             sequenceNodes: sequenceNodes,
             sequenceCommands: sequenceCommands
@@ -1048,18 +1048,18 @@ extension HotkeyCenter {
 }
 
 private extension KeyBinding {
-    func physicalKeyConflicts(with hyperTrigger: HyperKeyTrigger) -> Bool {
+    func physicalKeyConflicts(with modifierTrigger: ModifierKeyTrigger) -> Bool {
         guard !isUnassigned else { return false }
-        return hyperTrigger.matchesPhysicalKeyCode(keyCode)
+        return modifierTrigger.matchesPhysicalKeyCode(keyCode)
     }
 }
 
 private extension Array where Element == KeyBinding {
-    func conflictsElementwise(with other: [KeyBinding], hyperTrigger: HyperKeyTrigger) -> Bool {
-        count == other.count && zip(self, other).allSatisfy { $0.conflicts(with: $1, hyperTrigger: hyperTrigger) }
+    func conflictsElementwise(with other: [KeyBinding], modifierTrigger: ModifierKeyTrigger) -> Bool {
+        count == other.count && zip(self, other).allSatisfy { $0.conflicts(with: $1, modifierTrigger: modifierTrigger) }
     }
 
-    func isConflictPrefix(of other: [KeyBinding], hyperTrigger: HyperKeyTrigger) -> Bool {
-        count < other.count && zip(self, other).allSatisfy { $0.conflicts(with: $1, hyperTrigger: hyperTrigger) }
+    func isConflictPrefix(of other: [KeyBinding], modifierTrigger: ModifierKeyTrigger) -> Bool {
+        count < other.count && zip(self, other).allSatisfy { $0.conflicts(with: $1, modifierTrigger: modifierTrigger) }
     }
 }

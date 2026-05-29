@@ -115,7 +115,7 @@ private func makeHotkeyEditorDefaults() -> UserDefaults {
 
     @Test func capturingRuntimeEquivalentSequenceReturnsConflictBeforeRegistration() {
         let settings = SettingsStore(defaults: makeHotkeyEditorDefaults())
-        settings.hyperTrigger = .system
+        settings.modifierTrigger = .system
         let semantic = HotkeyTrigger.sequence([
             .leader,
             .chord(KeyBinding(keyCode: UInt32(kVK_ANSI_H), modifiers: 0))
@@ -143,7 +143,7 @@ private func makeHotkeyEditorDefaults() -> UserDefaults {
 
     @Test func capturingConflictingSequenceRootReturnsConflictBeforeRegistration() {
         let settings = SettingsStore(defaults: makeHotkeyEditorDefaults())
-        settings.hyperTrigger = .system
+        settings.modifierTrigger = .system
         let semanticRoot = HotkeyTrigger.sequence([
             .leader,
             .chord(KeyBinding(keyCode: UInt32(kVK_ANSI_H), modifiers: 0))

@@ -71,7 +71,7 @@ struct HotkeySettingsViewTests {
         let normal = HotkeyBinding(
             id: "focusLeft",
             command: .focus(.left),
-            binding: KeyBinding(keyCode: UInt32(kVK_LeftArrow), modifiers: 0, usesHyper: true)
+            binding: KeyBinding(keyCode: UInt32(kVK_LeftArrow), modifiers: 0, usesModifier: true)
         )
         let sequence = HotkeyBinding(
             id: "focusRight",

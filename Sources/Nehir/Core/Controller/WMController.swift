@@ -660,7 +660,7 @@ final class WMController {
     func updateHotkeyBindings(_ bindings: [HotkeyBinding], force: Bool = false) {
         hotkeys.updateBindings(
             bindings,
-            hyperTrigger: settings.hyperTrigger,
+            modifierTrigger: settings.modifierTrigger,
             leaderKey: settings.effectiveLeaderKey,
             sequenceTimeoutMilliseconds: settings.sequenceTimeoutMilliseconds,
             force: force

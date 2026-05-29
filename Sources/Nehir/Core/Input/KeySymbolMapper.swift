@@ -122,11 +122,11 @@ enum KeySymbolMapper {
         UInt32(kVK_ANSI_KeypadEquals): descriptor("KP=", "Keypad Equals")
     ]
 
-    static let hyperModifiers = UInt32(controlKey | optionKey | shiftKey | cmdKey)
+    static let realHyperModifiers = UInt32(controlKey | optionKey | shiftKey | cmdKey)
 
-    static func modifierSymbols(_ modifiers: UInt32, usesHyper: Bool = false) -> String {
+    static func modifierSymbols(_ modifiers: UInt32, usesModifier: Bool = false) -> String {
         var symbols = ""
-        if usesHyper { symbols += "Hyper+" }
+        if usesModifier { symbols += "Modifier+" }
         if modifiers & UInt32(controlKey) != 0 { symbols += "⌃" }
         if modifiers & UInt32(optionKey) != 0 { symbols += "⌥" }
         if modifiers & UInt32(shiftKey) != 0 { symbols += "⇧" }
@@ -138,13 +138,13 @@ enum KeySymbolMapper {
         keyDescriptors[keyCode]?.compact ?? "?"
     }
 
-    static func displayString(keyCode: UInt32, modifiers: UInt32, usesHyper: Bool = false) -> String {
-        modifierSymbols(modifiers, usesHyper: usesHyper) + keySymbol(keyCode)
+    static func displayString(keyCode: UInt32, modifiers: UInt32, usesModifier: Bool = false) -> String {
+        modifierSymbols(modifiers, usesModifier: usesModifier) + keySymbol(keyCode)
     }
 
-    static func modifierNames(_ modifiers: UInt32, usesHyper: Bool = false) -> String {
+    static func modifierNames(_ modifiers: UInt32, usesModifier: Bool = false) -> String {
         var names: [String] = []
-        if usesHyper { names.append("Hyper") }
+        if usesModifier { names.append("Modifier") }
         if modifiers & UInt32(controlKey) != 0 { names.append("Control") }
         if modifiers & UInt32(optionKey) != 0 { names.append("Option") }
         if modifiers & UInt32(shiftKey) != 0 { names.append("Shift") }
@@ -156,8 +156,8 @@ enum KeySymbolMapper {
         keyDescriptors[keyCode]?.name ?? "?"
     }
 
-    static func humanReadableString(keyCode: UInt32, modifiers: UInt32, usesHyper: Bool = false) -> String {
-        let mods = modifierNames(modifiers, usesHyper: usesHyper)
+    static func humanReadableString(keyCode: UInt32, modifiers: UInt32, usesModifier: Bool = false) -> String {
+        let mods = modifierNames(modifiers, usesModifier: usesModifier)
         let key = keyName(keyCode)
         return mods.isEmpty ? key : mods + "+" + key
     }
@@ -183,7 +183,7 @@ enum KeySymbolMapper {
         "Option": UInt32(optionKey),
         "Shift": UInt32(shiftKey),
         "Command": UInt32(cmdKey),
-        "Hyper": hyperModifiers
+        "Modifier": realHyperModifiers
     ]
 
     private static let normalizedNameToModifier: [String: UInt32] = {
@@ -198,16 +198,16 @@ enum KeySymbolMapper {
         }
         guard let keyPart = parts.last, let keyCode = keyCode(named: keyPart) else { return nil }
         var modifiers: UInt32 = 0
-        var usesHyper = false
+        var usesModifier = false
         for part in parts.dropLast() {
-            if part.localizedCaseInsensitiveCompare("Hyper") == .orderedSame {
-                usesHyper = true
+            if part.localizedCaseInsensitiveCompare("Modifier") == .orderedSame {
+                usesModifier = true
                 continue
             }
             guard let flag = nameToModifier[part] ?? normalizedNameToModifier[normalizeName(part)] else { return nil }
             modifiers |= flag
         }
-        return KeyBinding(keyCode: keyCode, modifiers: modifiers, usesHyper: usesHyper)
+        return KeyBinding(keyCode: keyCode, modifiers: modifiers, usesModifier: usesModifier)
     }
 
     private static func normalizeName(_ name: String) -> String {

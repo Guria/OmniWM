@@ -4,57 +4,57 @@ import Foundation
 struct KeyBinding: Equatable, Hashable {
     let keyCode: UInt32
     let modifiers: UInt32
-    let usesHyper: Bool
+    let usesModifier: Bool
 
     static let unassigned = KeyBinding(keyCode: UInt32.max, modifiers: 0)
-    static let defaultLeader = KeyBinding(keyCode: UInt32(kVK_Space), modifiers: 0, usesHyper: true)
+    static let defaultLeader = KeyBinding(keyCode: UInt32(kVK_Space), modifiers: 0, usesModifier: true)
 
-    init(keyCode: UInt32, modifiers: UInt32, usesHyper: Bool = false) {
+    init(keyCode: UInt32, modifiers: UInt32, usesModifier: Bool = false) {
         self.keyCode = keyCode
         self.modifiers = modifiers
-        self.usesHyper = usesHyper
+        self.usesModifier = usesModifier
     }
 
     var isUnassigned: Bool {
-        keyCode == UInt32.max && modifiers == 0 && !usesHyper
+        keyCode == UInt32.max && modifiers == 0 && !usesModifier
     }
 
     var displayString: String {
         if isUnassigned {
             return "Unassigned"
         }
-        return KeySymbolMapper.displayString(keyCode: keyCode, modifiers: modifiers, usesHyper: usesHyper)
+        return KeySymbolMapper.displayString(keyCode: keyCode, modifiers: modifiers, usesModifier: usesModifier)
     }
 
     var humanReadableString: String {
         if isUnassigned {
             return "Unassigned"
         }
-        return KeySymbolMapper.humanReadableString(keyCode: keyCode, modifiers: modifiers, usesHyper: usesHyper)
+        return KeySymbolMapper.humanReadableString(keyCode: keyCode, modifiers: modifiers, usesModifier: usesModifier)
     }
 
-    func conflicts(with other: KeyBinding, hyperTrigger: HyperKeyTrigger) -> Bool {
+    func conflicts(with other: KeyBinding, modifierTrigger: ModifierKeyTrigger) -> Bool {
         guard !isUnassigned, !other.isUnassigned, keyCode == other.keyCode else { return false }
-        if modifiers == other.modifiers && usesHyper == other.usesHyper {
+        if modifiers == other.modifiers && usesModifier == other.usesModifier {
             return true
         }
-        return carbonCompatibilityBinding(for: hyperTrigger) == other ||
-            other.carbonCompatibilityBinding(for: hyperTrigger) == self
+        return carbonCompatibilityBinding(for: modifierTrigger) == other ||
+            other.carbonCompatibilityBinding(for: modifierTrigger) == self
     }
 
     var isBarePrintableRoot: Bool {
-        guard modifiers == 0, !usesHyper else { return false }
+        guard modifiers == 0, !usesModifier else { return false }
         return Self.barePrintableRootKeyCodes.contains(keyCode)
     }
 
-    func carbonCompatibilityBinding(for hyperTrigger: HyperKeyTrigger) -> KeyBinding? {
-        guard usesHyper, !isUnassigned else { return nil }
-        if let modifier = hyperTrigger.carbonCompatibilityModifierMask {
+    func carbonCompatibilityBinding(for modifierTrigger: ModifierKeyTrigger) -> KeyBinding? {
+        guard usesModifier, !isUnassigned else { return nil }
+        if let modifier = modifierTrigger.carbonCompatibilityModifierMask {
             guard modifiers & modifier == 0 else { return nil }
             return KeyBinding(keyCode: keyCode, modifiers: modifiers | modifier)
         }
-        guard hyperTrigger == .system, modifiers == 0 else { return nil }
-        return KeyBinding(keyCode: keyCode, modifiers: KeySymbolMapper.hyperModifiers)
+        guard modifierTrigger == .system, modifiers == 0 else { return nil }
+        return KeyBinding(keyCode: keyCode, modifiers: KeySymbolMapper.realHyperModifiers)
     }
 
     private static let barePrintableRootKeyCodes: Set<UInt32> = [
@@ -82,7 +82,7 @@ struct KeyBinding: Equatable, Hashable {
 
 extension KeyBinding: Codable {
     private enum CodingKeys: String, CodingKey {
-        case keyCode, modifiers, usesHyper
+        case keyCode, modifiers, usesModifier
     }
 
     init(from decoder: Decoder) throws {
@@ -96,7 +96,7 @@ extension KeyBinding: Codable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         keyCode = try container.decode(UInt32.self, forKey: .keyCode)
         modifiers = try container.decode(UInt32.self, forKey: .modifiers)
-        usesHyper = try container.decodeIfPresent(Bool.self, forKey: .usesHyper) ?? false
+        usesModifier = try container.decodeIfPresent(Bool.self, forKey: .usesModifier) ?? false
     }
 
     func encode(to encoder: Encoder) throws {
@@ -107,20 +107,20 @@ extension KeyBinding: Codable {
             var container = encoder.container(keyedBy: CodingKeys.self)
             try container.encode(keyCode, forKey: .keyCode)
             try container.encode(modifiers, forKey: .modifiers)
-            if usesHyper {
-                try container.encode(usesHyper, forKey: .usesHyper)
+            if usesModifier {
+                try container.encode(usesModifier, forKey: .usesModifier)
             }
         }
     }
 }
 
-enum HyperKeyTrigger: Equatable, Hashable {
+enum ModifierKeyTrigger: Equatable, Hashable {
     case system
     case modifier(UInt32)
     case key(UInt32)
     case mouseButton(Int64)
 
-    static let `default`: HyperKeyTrigger = .modifier(UInt32(optionKey))
+    static let `default`: ModifierKeyTrigger = .modifier(UInt32(optionKey | cmdKey))
 
     var displayString: String {
         switch self {
@@ -198,11 +198,11 @@ enum HyperKeyTrigger: Equatable, Hashable {
         }
     }
 
-    static func fromHumanReadable(_ string: String) -> HyperKeyTrigger? {
+    static func fromHumanReadable(_ string: String) -> ModifierKeyTrigger? {
         let trimmed = string.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty { return nil }
-        if trimmed.localizedCaseInsensitiveCompare("System Hyper") == .orderedSame ||
-            trimmed.localizedCaseInsensitiveCompare("Real Hyper") == .orderedSame ||
+        if trimmed.localizedCaseInsensitiveCompare("System Modifier") == .orderedSame ||
+            trimmed.localizedCaseInsensitiveCompare("Real Modifier") == .orderedSame ||
             trimmed.localizedCaseInsensitiveCompare("Control+Option+Shift+Command") == .orderedSame
         {
             return .system
@@ -258,17 +258,17 @@ enum HyperKeyTrigger: Equatable, Hashable {
     }
 }
 
-extension HyperKeyTrigger: Codable {
+extension ModifierKeyTrigger: Codable {
     init(from decoder: Decoder) throws {
         if let container = try? decoder.singleValueContainer(),
            let string = try? container.decode(String.self),
-           let trigger = HyperKeyTrigger.fromHumanReadable(string)
+           let trigger = ModifierKeyTrigger.fromHumanReadable(string)
         {
             self = trigger
             return
         }
         throw DecodingError.dataCorrupted(
-            .init(codingPath: decoder.codingPath, debugDescription: "Invalid Hyper key trigger")
+            .init(codingPath: decoder.codingPath, debugDescription: "Invalid modifier key trigger")
         )
     }
 
@@ -373,29 +373,29 @@ enum HotkeyTrigger: Equatable, Hashable {
         }
     }
 
-    func conflicts(with other: HotkeyTrigger, leaderKey: KeyBinding, hyperTrigger: HyperKeyTrigger) -> Bool {
+    func conflicts(with other: HotkeyTrigger, leaderKey: KeyBinding, modifierTrigger: ModifierKeyTrigger) -> Bool {
         guard !isUnassigned, !other.isUnassigned else { return false }
         switch (self, other) {
         case let (.chord(lhs), .chord(rhs)):
-            return lhs.conflicts(with: rhs, hyperTrigger: hyperTrigger)
+            return lhs.conflicts(with: rhs, modifierTrigger: modifierTrigger)
         case (.sequence, .sequence):
             guard let lhs = resolvedSequence(leaderKey: leaderKey),
                   let rhs = other.resolvedSequence(leaderKey: leaderKey)
             else { return false }
-            if lhs.conflictMatches(rhs, hyperTrigger: hyperTrigger) ||
-                lhs.isConflictPrefix(of: rhs, hyperTrigger: hyperTrigger) ||
-                rhs.isConflictPrefix(of: lhs, hyperTrigger: hyperTrigger)
+            if lhs.conflictMatches(rhs, modifierTrigger: modifierTrigger) ||
+                lhs.isConflictPrefix(of: rhs, modifierTrigger: modifierTrigger) ||
+                rhs.isConflictPrefix(of: lhs, modifierTrigger: modifierTrigger)
             {
                 return true
             }
             guard let lhsRoot = lhs.first, let rhsRoot = rhs.first else { return false }
-            return lhsRoot != rhsRoot && lhsRoot.conflicts(with: rhsRoot, hyperTrigger: hyperTrigger)
+            return lhsRoot != rhsRoot && lhsRoot.conflicts(with: rhsRoot, modifierTrigger: modifierTrigger)
         case let (.chord(binding), .sequence):
             guard let root = other.resolvedSequence(leaderKey: leaderKey)?.first else { return false }
-            return binding.conflicts(with: root, hyperTrigger: hyperTrigger)
+            return binding.conflicts(with: root, modifierTrigger: modifierTrigger)
         case let (.sequence, .chord(binding)):
             guard let root = resolvedSequence(leaderKey: leaderKey)?.first else { return false }
-            return root.conflicts(with: binding, hyperTrigger: hyperTrigger)
+            return root.conflicts(with: binding, modifierTrigger: modifierTrigger)
         default:
             return false
         }
@@ -446,12 +446,12 @@ extension HotkeyTrigger: Codable {
 }
 
 private extension Array where Element == KeyBinding {
-    func conflictMatches(_ other: [KeyBinding], hyperTrigger: HyperKeyTrigger) -> Bool {
-        count == other.count && zip(self, other).allSatisfy { $0.conflicts(with: $1, hyperTrigger: hyperTrigger) }
+    func conflictMatches(_ other: [KeyBinding], modifierTrigger: ModifierKeyTrigger) -> Bool {
+        count == other.count && zip(self, other).allSatisfy { $0.conflicts(with: $1, modifierTrigger: modifierTrigger) }
     }
 
-    func isConflictPrefix(of other: [KeyBinding], hyperTrigger: HyperKeyTrigger) -> Bool {
-        count < other.count && zip(self, other).allSatisfy { $0.conflicts(with: $1, hyperTrigger: hyperTrigger) }
+    func isConflictPrefix(of other: [KeyBinding], modifierTrigger: ModifierKeyTrigger) -> Bool {
+        count < other.count && zip(self, other).allSatisfy { $0.conflicts(with: $1, modifierTrigger: modifierTrigger) }
     }
 }
 

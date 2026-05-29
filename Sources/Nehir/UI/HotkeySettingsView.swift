@@ -46,7 +46,7 @@ enum HotkeyCaptureResult {
 
 private enum HotkeyRecordingTarget: Equatable {
     case chord(String)
-    case hyperTrigger
+    case modifierTrigger
 }
 
 enum HotkeySettingsDisplayModel {
@@ -79,7 +79,7 @@ enum HotkeySettingsDisplayModel {
         if binding.isUnassigned {
             return "Unassigned"
         }
-        let prefix = binding.usesHyper ? "Nehir+" : ""
+        let prefix = binding.usesModifier ? "Nehir+" : ""
         return prefix + KeySymbolMapper.displayString(keyCode: binding.keyCode, modifiers: binding.modifiers)
     }
 
@@ -107,7 +107,7 @@ enum HotkeySettingsDisplayModel {
             keyCode: binding.keyCode,
             modifiers: binding.modifiers
         )
-        return binding.usesHyper ? "Nehir modifier+\(base)" : base
+        return binding.usesModifier ? "Nehir modifier+\(base)" : base
     }
 
     static func humanReadableString(for trigger: HotkeyTrigger) -> String {
@@ -143,26 +143,26 @@ struct HotkeySettingsView: View {
             Section("Controls") {
                 LabeledContent("Nehir Modifier") {
                     HStack(spacing: 8) {
-                        if recordingTarget == .hyperTrigger {
-                            HyperTriggerRecorderView(
+                        if recordingTarget == .modifierTrigger {
+                            ModifierTriggerRecorderView(
                                 accessibilityLabel: "Recording Nehir modifier",
-                                onCapture: handleHyperTriggerCaptured,
+                                onCapture: handleModifierTriggerCaptured,
                                 onCancel: cancelRecording
                             )
                             .frame(minWidth: 180, idealWidth: 210, minHeight: 34)
                         } else {
                             Button {
-                                startHyperTriggerRecording()
+                                startModifierTriggerRecording()
                             } label: {
-                                Text(settings.hyperTrigger.displayString)
+                                Text(settings.modifierTrigger.displayString)
                                     .font(.system(.body, design: .monospaced))
                                     .lineLimit(1)
                                     .frame(minWidth: 112, alignment: .center)
                             }
                             .buttonStyle(.bordered)
-                            .help("Change Nehir modifier. Current: \(settings.hyperTrigger.humanReadableString)")
+                            .help("Change Nehir modifier. Current: \(settings.modifierTrigger.humanReadableString)")
                             .accessibilityLabel("Change Nehir modifier")
-                            .accessibilityValue(settings.hyperTrigger.humanReadableString)
+                            .accessibilityValue(settings.modifierTrigger.humanReadableString)
                         }
                     }
                 }
@@ -209,7 +209,7 @@ struct HotkeySettingsView: View {
                             HotkeyBindingRow(
                                 binding: binding,
                                 recordingTarget: $recordingTarget,
-                                hyperTrigger: settings.hyperTrigger,
+                                modifierTrigger: settings.modifierTrigger,
                                 failureReason: controller.hotkeyRegistrationFailures[binding.command],
                                 onStartRecording: startChordRecording,
                                 onCaptured: handleChordCaptured,
@@ -285,16 +285,16 @@ struct HotkeySettingsView: View {
         recordingTarget = .chord(actionId)
     }
 
-    private func startHyperTriggerRecording() {
-        recordingTarget = .hyperTrigger
+    private func startModifierTriggerRecording() {
+        recordingTarget = .modifierTrigger
     }
 
     private func handleChordCaptured(actionId: String, newBinding: KeyBinding) {
         handleTriggerCaptured(actionId: actionId, newTrigger: newBinding.isUnassigned ? .unassigned : .chord(newBinding))
     }
 
-    private func handleHyperTriggerCaptured(_ newTrigger: HyperKeyTrigger) {
-        settings.hyperTrigger = newTrigger
+    private func handleModifierTriggerCaptured(_ newTrigger: ModifierKeyTrigger) {
+        settings.modifierTrigger = newTrigger
         controller.updateHotkeyBindings(settings.hotkeyBindings)
         cancelRecording()
     }
@@ -367,7 +367,7 @@ struct HotkeyNoticeAlert: Identifiable {
 private struct HotkeyBindingRow: View {
     let binding: HotkeyBinding
     @Binding var recordingTarget: HotkeyRecordingTarget?
-    let hyperTrigger: HyperKeyTrigger
+    let modifierTrigger: ModifierKeyTrigger
     let failureReason: HotkeyRegistrationFailureReason?
     let onStartRecording: (String) -> Void
     let onCaptured: (String, KeyBinding) -> Void
@@ -391,7 +391,7 @@ private struct HotkeyBindingRow: View {
                     binding: binding.binding,
                     commandName: binding.command.displayName,
                     isRecording: recordingTarget == .chord(binding.id),
-                    hyperTrigger: hyperTrigger,
+                    modifierTrigger: modifierTrigger,
                     onStartRecording: { onStartRecording(binding.id) },
                     onCaptured: { onCaptured(binding.id, $0) },
                     onCancel: onCancel,
@@ -431,11 +431,11 @@ private struct HotkeyBindingRow: View {
             return "Failed to register: invalid sequence root"
         case .sequenceRootConflict:
             return "Failed to register: sequence root conflict"
-        case .hyperLeaderConflict:
+        case .modifierLeaderConflict:
             return "Failed to register: conflicts with Nehir modifier"
-        case .unsupportedHyperModifiers:
+        case .unsupportedModifierKeys:
             return "Failed to register: Nehir modifier cannot reuse its trigger modifier"
-        case .unsupportedSequenceHyperStep:
+        case .unsupportedSequenceModifierStep:
             return "Failed to register: unsupported sequence step"
         case .eventTapUnavailable:
             return "Failed to register: modifier capture unavailable"
@@ -449,7 +449,7 @@ private struct HotkeyBindingControl: View {
     let binding: HotkeyTrigger
     let commandName: String
     let isRecording: Bool
-    let hyperTrigger: HyperKeyTrigger
+    let modifierTrigger: ModifierKeyTrigger
     let onStartRecording: () -> Void
     let onCaptured: (KeyBinding) -> Void
     let onCancel: () -> Void
@@ -460,7 +460,7 @@ private struct HotkeyBindingControl: View {
             if isRecording {
                 KeyRecorderView(
                     accessibilityLabel: "Recording hotkey for \(commandName)",
-                    hyperTrigger: hyperTrigger,
+                    modifierTrigger: modifierTrigger,
                     onCapture: onCaptured,
                     onCancel: onCancel
                 )

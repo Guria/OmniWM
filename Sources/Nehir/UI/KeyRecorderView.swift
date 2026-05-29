@@ -5,7 +5,7 @@ import SwiftUI
 struct KeyRecorderView: NSViewRepresentable {
     let accessibilityLabel: String
     var allowsBareKeys: Bool = false
-    var hyperTrigger: HyperKeyTrigger = .default
+    var modifierTrigger: ModifierKeyTrigger = .default
     let onCapture: (KeyBinding) -> Void
     let onCancel: () -> Void
 
@@ -13,7 +13,7 @@ struct KeyRecorderView: NSViewRepresentable {
         let view = KeyRecorderNSView()
         view.recordingAccessibilityLabel = accessibilityLabel
         view.allowsBareKeys = allowsBareKeys
-        view.hyperTrigger = hyperTrigger
+        view.modifierTrigger = modifierTrigger
         view.onCapture = onCapture
         view.onCancel = onCancel
         view.updateAccessibility()
@@ -23,18 +23,18 @@ struct KeyRecorderView: NSViewRepresentable {
     func updateNSView(_ nsView: KeyRecorderNSView, context _: Context) {
         nsView.recordingAccessibilityLabel = accessibilityLabel
         nsView.allowsBareKeys = allowsBareKeys
-        nsView.hyperTrigger = hyperTrigger
+        nsView.modifierTrigger = modifierTrigger
         nsView.updateAccessibility()
     }
 }
 
-struct HyperTriggerRecorderView: NSViewRepresentable {
+struct ModifierTriggerRecorderView: NSViewRepresentable {
     let accessibilityLabel: String
-    let onCapture: (HyperKeyTrigger) -> Void
+    let onCapture: (ModifierKeyTrigger) -> Void
     let onCancel: () -> Void
 
-    func makeNSView(context _: Context) -> HyperTriggerRecorderNSView {
-        let view = HyperTriggerRecorderNSView()
+    func makeNSView(context _: Context) -> ModifierTriggerRecorderNSView {
+        let view = ModifierTriggerRecorderNSView()
         view.recordingAccessibilityLabel = accessibilityLabel
         view.onCapture = onCapture
         view.onCancel = onCancel
@@ -42,16 +42,16 @@ struct HyperTriggerRecorderView: NSViewRepresentable {
         return view
     }
 
-    func updateNSView(_ nsView: HyperTriggerRecorderNSView, context _: Context) {
+    func updateNSView(_ nsView: ModifierTriggerRecorderNSView, context _: Context) {
         nsView.recordingAccessibilityLabel = accessibilityLabel
         nsView.updateAccessibility()
     }
 }
 
-class HyperTriggerRecorderNSView: NSView {
-    var onCapture: ((HyperKeyTrigger) -> Void)?
+class ModifierTriggerRecorderNSView: NSView {
+    var onCapture: ((ModifierKeyTrigger) -> Void)?
     var onCancel: (() -> Void)?
-    var recordingAccessibilityLabel = "Recording Hyper key"
+    var recordingAccessibilityLabel = "Recording modifier key"
 
     private let label = NSTextField(labelWithString: "Press key or mouse button...")
 
@@ -103,7 +103,7 @@ class HyperTriggerRecorderNSView: NSView {
         }
     }
 
-    private func capture(_ trigger: HyperKeyTrigger) {
+    private func capture(_ trigger: ModifierKeyTrigger) {
         onCapture?(trigger)
     }
 
@@ -117,7 +117,7 @@ class HyperTriggerRecorderNSView: NSView {
 
     override func flagsChanged(with event: NSEvent) {
         let keyCode = UInt32(event.keyCode)
-        let modifier = HyperKeyTrigger.modifierMask(for: keyCode)
+        let modifier = ModifierKeyTrigger.modifierMask(for: keyCode)
         if modifier != 0 {
             capture(.modifier(modifier))
         } else {
@@ -139,12 +139,12 @@ class KeyRecorderNSView: NSView {
     var onCancel: (() -> Void)?
     var recordingAccessibilityLabel = "Recording hotkey"
     var allowsBareKeys = false
-    var hyperTrigger: HyperKeyTrigger = .default {
-        didSet { isVirtualHyperActive = false }
+    var modifierTrigger: ModifierKeyTrigger = .default {
+        didSet { isVirtualModifierActive = false }
     }
 
     private let label = NSTextField(labelWithString: "Press keys...")
-    private var isVirtualHyperActive = false
+    private var isVirtualModifierActive = false
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -224,7 +224,7 @@ class KeyRecorderNSView: NSView {
             return true
         }
 
-        if handleVirtualHyperTriggerEvent(event) {
+        if handleVirtualModifierTriggerEvent(event) {
             return true
         }
         guard event.type != .keyUp else { return false }
@@ -240,16 +240,16 @@ class KeyRecorderNSView: NSView {
         guard event.type != .flagsChanged else { return nil }
 
         let carbonModifiers = carbonModifiersFromNSEvent(event)
-        let usesSemanticHyper = isVirtualHyperActive || carbonModifiers == KeySymbolMapper.hyperModifiers
-        let normalizedModifiers = usesSemanticHyper ? semanticHyperModifiers(from: carbonModifiers) : carbonModifiers
+        let usesSemanticModifier = isVirtualModifierActive || carbonModifiers == KeySymbolMapper.realHyperModifiers
+        let normalizedModifiers = usesSemanticModifier ? semanticModifierKeys(from: carbonModifiers) : carbonModifiers
         let requiresModifier = !isSpecialKey(Int(event.keyCode))
-        guard allowsBareKeys || usesSemanticHyper || !requiresModifier || normalizedModifiers != 0 else { return nil }
+        guard allowsBareKeys || usesSemanticModifier || !requiresModifier || normalizedModifiers != 0 else { return nil }
 
-        if usesSemanticHyper {
+        if usesSemanticModifier {
             return KeyBinding(
                 keyCode: UInt32(event.keyCode),
                 modifiers: normalizedModifiers,
-                usesHyper: true
+                usesModifier: true
             )
         }
 
@@ -259,11 +259,11 @@ class KeyRecorderNSView: NSView {
         )
     }
 
-    private func semanticHyperModifiers(from carbonModifiers: UInt32) -> UInt32 {
-        if carbonModifiers == KeySymbolMapper.hyperModifiers {
+    private func semanticModifierKeys(from carbonModifiers: UInt32) -> UInt32 {
+        if carbonModifiers == KeySymbolMapper.realHyperModifiers {
             return 0
         }
-        return carbonModifiers & ~hyperTrigger.modifierMaskToExclude
+        return carbonModifiers & ~modifierTrigger.modifierMaskToExclude
     }
 
     private func carbonModifiersFromNSEvent(_ event: NSEvent) -> UInt32 {
@@ -286,45 +286,45 @@ class KeyRecorderNSView: NSView {
             keyCode == kVK_F19 || keyCode == kVK_F20
     }
 
-    private func handleVirtualHyperTriggerEvent(_ event: NSEvent) -> Bool {
-        if handleVirtualHyperMouseEvent(event) {
+    private func handleVirtualModifierTriggerEvent(_ event: NSEvent) -> Bool {
+        if handleVirtualModifierMouseEvent(event) {
             return true
         }
         let keyCode = UInt32(event.keyCode)
-        guard hyperTrigger.matchesPhysicalKeyCode(keyCode) else { return false }
+        guard modifierTrigger.matchesPhysicalKeyCode(keyCode) else { return false }
 
         switch event.type {
         case .flagsChanged:
             if let modifierActive = modifierFlagIsActive(for: keyCode, event: event) {
-                isVirtualHyperActive = isVirtualHyperActive ? false : modifierActive
+                isVirtualModifierActive = isVirtualModifierActive ? false : modifierActive
             } else if keyCode == UInt32(kVK_CapsLock) {
-                isVirtualHyperActive = event.modifierFlags.contains(.capsLock)
+                isVirtualModifierActive = event.modifierFlags.contains(.capsLock)
             } else {
-                isVirtualHyperActive = true
+                isVirtualModifierActive = true
             }
             return true
         case .keyDown:
-            isVirtualHyperActive = true
+            isVirtualModifierActive = true
             return true
         case .keyUp:
-            isVirtualHyperActive = false
+            isVirtualModifierActive = false
             return true
         default:
             return false
         }
     }
 
-    private func handleVirtualHyperMouseEvent(_ event: NSEvent) -> Bool {
-        guard case let .mouseButton(button) = hyperTrigger,
+    private func handleVirtualModifierMouseEvent(_ event: NSEvent) -> Bool {
+        guard case let .mouseButton(button) = modifierTrigger,
               Int64(event.buttonNumber) == button
         else { return false }
 
         switch event.type {
         case .otherMouseDown:
-            isVirtualHyperActive = true
+            isVirtualModifierActive = true
             return true
         case .otherMouseUp:
-            isVirtualHyperActive = false
+            isVirtualModifierActive = false
             return true
         default:
             return false
@@ -361,12 +361,12 @@ class KeyRecorderNSView: NSView {
     }
 
     override func otherMouseDown(with event: NSEvent) {
-        guard !handleVirtualHyperMouseEvent(event) else { return }
+        guard !handleVirtualModifierMouseEvent(event) else { return }
         super.otherMouseDown(with: event)
     }
 
     override func otherMouseUp(with event: NSEvent) {
-        guard !handleVirtualHyperMouseEvent(event) else { return }
+        guard !handleVirtualModifierMouseEvent(event) else { return }
         super.otherMouseUp(with: event)
     }
 

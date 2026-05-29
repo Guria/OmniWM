@@ -384,7 +384,7 @@ struct SettingsExportTests {
         #expect(defaults.borderColorGreen == 1.0)
         #expect(defaults.borderColorBlue == 0.97930003794467602)
         #expect(defaults.hotkeyBindings == HotkeyBindingRegistry.defaults())
-        #expect(defaults.hyperTrigger == .default)
+        #expect(defaults.modifierTrigger == .default)
         #expect(defaults.workspaceBarEnabled == true)
         #expect(defaults.workspaceBarShowFloatingWindows == false)
         #expect(defaults.workspaceBarNotchAware == true)
@@ -583,7 +583,7 @@ struct KeyBindingCodecTests {
         let binding = KeyBinding(
             keyCode: UInt32(kVK_Space),
             modifiers: 0,
-            usesHyper: true
+            usesModifier: true
         )
 
         let output = try encodeSingleHotkeyBinding(binding)
@@ -602,41 +602,41 @@ struct KeyBindingCodecTests {
         let semantic = KeyBinding(
             keyCode: UInt32(kVK_Space),
             modifiers: 0,
-            usesHyper: true
+            usesModifier: true
         )
 
         #expect(literal.displayString == "⌃⌥⇧⌘Space")
         #expect(literal.humanReadableString == "Control+Option+Shift+Command+Space")
         #expect(literal != semantic)
-        #expect(literal.conflicts(with: semantic, hyperTrigger: .system))
+        #expect(literal.conflicts(with: semantic, modifierTrigger: .system))
     }
 
-    @Test func hyperTriggerRoundTripsKeyboardAndMouseButtons() throws {
+    @Test func modifierTriggerRoundTripsKeyboardAndMouseButtons() throws {
         var export = SettingsExport.defaults()
-        export.hyperTrigger = .mouseButton(4)
+        export.modifierTrigger = .mouseButton(4)
 
         var data = try SettingsTOMLCodec.encode(export)
         var output = try #require(String(data: data, encoding: .utf8))
         var decoded = try SettingsTOMLCodec.decode(data)
 
-        #expect(output.contains("hyperTrigger = \"MouseButton4\""))
-        #expect(decoded.hyperTrigger == .mouseButton(4))
+        #expect(output.contains("modifierTrigger = \"MouseButton4\""))
+        #expect(decoded.modifierTrigger == .mouseButton(4))
 
-        export.hyperTrigger = .modifier(UInt32(optionKey))
+        export.modifierTrigger = .modifier(UInt32(optionKey))
         data = try SettingsTOMLCodec.encode(export)
         output = try #require(String(data: data, encoding: .utf8))
         decoded = try SettingsTOMLCodec.decode(data)
 
-        #expect(output.contains("hyperTrigger = \"Option\""))
-        #expect(decoded.hyperTrigger == .modifier(UInt32(optionKey)))
+        #expect(output.contains("modifierTrigger = \"Option\""))
+        #expect(decoded.modifierTrigger == .modifier(UInt32(optionKey)))
 
-        export.hyperTrigger = .key(UInt32(kVK_F18))
+        export.modifierTrigger = .key(UInt32(kVK_F18))
         data = try SettingsTOMLCodec.encode(export)
         output = try #require(String(data: data, encoding: .utf8))
         decoded = try SettingsTOMLCodec.decode(data)
 
-        #expect(output.contains("hyperTrigger = \"F18\""))
-        #expect(decoded.hyperTrigger == .key(UInt32(kVK_F18)))
+        #expect(output.contains("modifierTrigger = \"F18\""))
+        #expect(decoded.modifierTrigger == .key(UInt32(kVK_F18)))
     }
 
     @Test func legacyWorkspaceDefaultsMigrateToSemanticHyper() throws {
@@ -659,7 +659,7 @@ struct KeyBindingCodecTests {
 
         #expect(
             decoded.hotkeyBindings.first { $0.id == "switchWorkspace.1" }?.binding ==
-                .chord(KeyBinding(keyCode: UInt32(kVK_ANSI_2), modifiers: 0, usesHyper: true))
+                .chord(KeyBinding(keyCode: UInt32(kVK_ANSI_2), modifiers: 0, usesModifier: true))
         )
         #expect(decoded.hotkeyBindings.first { $0.id == "focus.left" }?.binding == customFocus.binding)
     }
@@ -925,7 +925,7 @@ struct HotkeySurfaceTests {
         #expect(settings.borderColorGreen == 1.0)
         #expect(settings.borderColorBlue == 0.97930003794467602)
         #expect(settings.hotkeyBindings == HotkeyBindingRegistry.defaults())
-        #expect(settings.hyperTrigger == .default)
+        #expect(settings.modifierTrigger == .default)
         #expect(settings.leaderKey == KeyBinding.defaultLeader)
         #expect(settings.sequenceTimeoutMilliseconds == 800)
         #expect(settings.workspaceBarEnabled == true)
@@ -960,7 +960,7 @@ struct HotkeySurfaceTests {
 
     @Test func resetHotkeysRestoresLeaderAndSequenceTimeout() {
         let settings = SettingsStore(defaults: makeTestDefaults())
-        settings.hyperTrigger = .mouseButton(4)
+        settings.modifierTrigger = .mouseButton(4)
         settings.leaderKey = KeyBinding(keyCode: UInt32(kVK_F13), modifiers: 0)
         settings.sequenceTimeoutMilliseconds = 1500
         settings.updateBinding(
@@ -971,21 +971,21 @@ struct HotkeySurfaceTests {
         settings.resetHotkeysToDefaults()
 
         #expect(settings.hotkeyBindings == HotkeyBindingRegistry.defaults())
-        #expect(settings.hyperTrigger == .default)
+        #expect(settings.modifierTrigger == .default)
         #expect(settings.leaderKey == KeyBinding.defaultLeader)
         #expect(settings.sequenceTimeoutMilliseconds == 800)
     }
 
     @Test func capsLockHyperPresetKeepsLeaderOnHyperSpace() {
         let settings = SettingsStore(defaults: makeTestDefaults())
-        settings.hyperTrigger = .system
+        settings.modifierTrigger = .system
         settings.leaderKey = KeyBinding(keyCode: UInt32(kVK_F13), modifiers: 0)
 
-        settings.applyCapsLockHyperPreset()
+        settings.applyCapsLockModifierPreset()
 
-        #expect(settings.hyperTrigger == .key(UInt32(kVK_CapsLock)))
+        #expect(settings.modifierTrigger == .key(UInt32(kVK_CapsLock)))
         #expect(settings.leaderKey == KeyBinding.defaultLeader)
-        #expect(!settings.leaderKey(settings.leaderKey, conflictsWith: settings.hyperTrigger))
+        #expect(!settings.leaderKey(settings.leaderKey, conflictsWith: settings.modifierTrigger))
     }
 
     @Test func effectiveLeaderKeyFallsBackToDefaultWhenStoredLeaderIsUnassigned() {
@@ -1021,7 +1021,7 @@ struct HotkeySurfaceTests {
         let settings = SettingsStore(defaults: makeTestDefaults())
         let plan = HotkeyCenter.registrationPlan(
             for: settings.hotkeyBindings,
-            hyperTrigger: settings.hyperTrigger,
+            modifierTrigger: settings.modifierTrigger,
             leaderKey: settings.leaderKey,
             sequenceEventAccessGranted: false
         )
@@ -1030,7 +1030,7 @@ struct HotkeySurfaceTests {
             guard case .sequence = binding.binding else { return true }
             return false
         })
-        #expect(plan.virtualHyperRegistrations.isEmpty)
+        #expect(plan.virtualModifierRegistrations.isEmpty)
     }
 
     @Test func capsLockHyperPreflightRejectsExistingCapsLockHotkey() {
@@ -1042,12 +1042,12 @@ struct HotkeySurfaceTests {
 
         let plan = HotkeyCenter.registrationPlan(
             for: settings.hotkeyBindings,
-            hyperTrigger: .key(UInt32(kVK_CapsLock)),
+            modifierTrigger: .key(UInt32(kVK_CapsLock)),
             leaderKey: KeyBinding.defaultLeader,
             sequenceEventAccessGranted: true
         )
 
-        #expect(plan.failures[.focus(.left)] == .hyperLeaderConflict)
+        #expect(plan.failures[.focus(.left)] == .modifierLeaderConflict)
     }
 
     @Test func leaderRootConflictsFindDirectChordUsingCandidateLeader() {
@@ -1089,7 +1089,7 @@ struct HotkeySurfaceTests {
     @Test func leaderUsingHyperTriggerPhysicalKeyIsReportedAsConflict() {
         let settings = SettingsStore(defaults: makeTestDefaults())
         let rawCapsLeader = KeyBinding(keyCode: UInt32(kVK_CapsLock), modifiers: 0)
-        let semanticSpaceLeader = KeyBinding(keyCode: UInt32(kVK_Space), modifiers: 0, usesHyper: true)
+        let semanticSpaceLeader = KeyBinding(keyCode: UInt32(kVK_Space), modifiers: 0, usesModifier: true)
 
         #expect(settings.leaderKey(rawCapsLeader, conflictsWith: .key(UInt32(kVK_CapsLock))))
         #expect(settings.leaderKey(semanticSpaceLeader, conflictsWith: .key(UInt32(kVK_Space))))
@@ -1098,7 +1098,7 @@ struct HotkeySurfaceTests {
             conflictsWith: .modifier(UInt32(optionKey))
         ))
         #expect(!settings.leaderKey(
-            KeyBinding(keyCode: UInt32(kVK_ANSI_S), modifiers: 0, usesHyper: true),
+            KeyBinding(keyCode: UInt32(kVK_ANSI_S), modifiers: 0, usesModifier: true),
             conflictsWith: .key(UInt32(kVK_CapsLock))
         ))
     }

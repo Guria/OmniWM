@@ -156,118 +156,118 @@ private func makeHotkeyOtherMouseEvent(type: CGEventType, buttonNumber: Int64) -
     }
 
     @Test func systemSemanticHyperBindingsRegisterLiteralCompatibilityOnly() {
-        let semantic = KeyBinding(keyCode: UInt32(kVK_ANSI_2), modifiers: 0, usesHyper: true)
+        let semantic = KeyBinding(keyCode: UInt32(kVK_ANSI_2), modifiers: 0, usesModifier: true)
         let literal = KeyBinding(keyCode: UInt32(kVK_ANSI_2), modifiers: KeySymbolMapper.hyperModifiers)
         let plan = HotkeyCenter.registrationPlan(
             for: [
                 HotkeyBinding(id: "switchWorkspace.1", command: .switchWorkspace(1), binding: semantic)
             ],
-            hyperTrigger: .system
+            modifierTrigger: .system
         )
 
         #expect(plan.failures.isEmpty)
         #expect(plan.registrations == [
             HotkeyPlannedRegistration(binding: literal, command: .switchWorkspace(1))
         ])
-        #expect(plan.virtualHyperRegistrations.isEmpty)
+        #expect(plan.virtualModifierRegistrations.isEmpty)
     }
 
     @Test func optionModifierSemanticHyperBindingsRegisterOptionCompatibilityOnly() {
-        let semantic = KeyBinding(keyCode: UInt32(kVK_ANSI_2), modifiers: 0, usesHyper: true)
+        let semantic = KeyBinding(keyCode: UInt32(kVK_ANSI_2), modifiers: 0, usesModifier: true)
         let literal = KeyBinding(keyCode: UInt32(kVK_ANSI_2), modifiers: UInt32(optionKey))
         let plan = HotkeyCenter.registrationPlan(
             for: [
                 HotkeyBinding(id: "switchWorkspace.1", command: .switchWorkspace(1), binding: semantic)
             ],
-            hyperTrigger: .modifier(UInt32(optionKey))
+            modifierTrigger: .modifier(UInt32(optionKey))
         )
 
         #expect(plan.failures.isEmpty)
         #expect(plan.registrations == [
             HotkeyPlannedRegistration(binding: literal, command: .switchWorkspace(1))
         ])
-        #expect(plan.virtualHyperRegistrations.isEmpty)
+        #expect(plan.virtualModifierRegistrations.isEmpty)
     }
 
     @Test func customSemanticHyperBindingsRegisterVirtualTriggerOnly() {
-        let semantic = KeyBinding(keyCode: UInt32(kVK_ANSI_2), modifiers: 0, usesHyper: true)
+        let semantic = KeyBinding(keyCode: UInt32(kVK_ANSI_2), modifiers: 0, usesModifier: true)
         let plan = HotkeyCenter.registrationPlan(
             for: [
                 HotkeyBinding(id: "switchWorkspace.1", command: .switchWorkspace(1), binding: semantic)
             ],
-            hyperTrigger: .key(UInt32(kVK_CapsLock))
+            modifierTrigger: .key(UInt32(kVK_CapsLock))
         )
 
         #expect(plan.failures.isEmpty)
         #expect(plan.registrations.isEmpty)
-        #expect(plan.virtualHyperRegistrations == [
+        #expect(plan.virtualModifierRegistrations == [
             HotkeyPlannedRegistration(binding: semantic, command: .switchWorkspace(1))
         ])
     }
 
     @Test func systemSemanticHyperWithExtraModifiersFailsClosed() {
-        let semantic = KeyBinding(keyCode: UInt32(kVK_ANSI_2), modifiers: UInt32(shiftKey), usesHyper: true)
+        let semantic = KeyBinding(keyCode: UInt32(kVK_ANSI_2), modifiers: UInt32(shiftKey), usesModifier: true)
         let plan = HotkeyCenter.registrationPlan(
             for: [
                 HotkeyBinding(id: "moveToWorkspace.1", command: .moveToWorkspace(1), binding: semantic)
             ],
-            hyperTrigger: .system
+            modifierTrigger: .system
         )
 
-        #expect(plan.failures == [.moveToWorkspace(1): .unsupportedHyperModifiers])
+        #expect(plan.failures == [.moveToWorkspace(1): .unsupportedModifierKeys])
         #expect(plan.registrations.isEmpty)
-        #expect(plan.virtualHyperRegistrations.isEmpty)
+        #expect(plan.virtualModifierRegistrations.isEmpty)
     }
 
     @Test func optionModifierSemanticHyperWithExtraModifiersPreservesExtraModifiers() {
-        let semantic = KeyBinding(keyCode: UInt32(kVK_ANSI_2), modifiers: UInt32(shiftKey), usesHyper: true)
+        let semantic = KeyBinding(keyCode: UInt32(kVK_ANSI_2), modifiers: UInt32(shiftKey), usesModifier: true)
         let literal = KeyBinding(keyCode: UInt32(kVK_ANSI_2), modifiers: UInt32(optionKey | shiftKey))
         let plan = HotkeyCenter.registrationPlan(
             for: [
                 HotkeyBinding(id: "moveToWorkspace.1", command: .moveToWorkspace(1), binding: semantic)
             ],
-            hyperTrigger: .modifier(UInt32(optionKey))
+            modifierTrigger: .modifier(UInt32(optionKey))
         )
 
         #expect(plan.failures.isEmpty)
         #expect(plan.registrations == [
             HotkeyPlannedRegistration(binding: literal, command: .moveToWorkspace(1))
         ])
-        #expect(plan.virtualHyperRegistrations.isEmpty)
+        #expect(plan.virtualModifierRegistrations.isEmpty)
     }
 
     @Test func customSemanticHyperWithExtraModifiersIsVirtualOnly() {
-        let semantic = KeyBinding(keyCode: UInt32(kVK_ANSI_2), modifiers: UInt32(shiftKey), usesHyper: true)
+        let semantic = KeyBinding(keyCode: UInt32(kVK_ANSI_2), modifiers: UInt32(shiftKey), usesModifier: true)
         let plan = HotkeyCenter.registrationPlan(
             for: [
                 HotkeyBinding(id: "moveToWorkspace.1", command: .moveToWorkspace(1), binding: semantic)
             ],
-            hyperTrigger: .key(UInt32(kVK_CapsLock))
+            modifierTrigger: .key(UInt32(kVK_CapsLock))
         )
 
         #expect(plan.failures.isEmpty)
         #expect(plan.registrations.isEmpty)
-        #expect(plan.virtualHyperRegistrations == [
+        #expect(plan.virtualModifierRegistrations == [
             HotkeyPlannedRegistration(binding: semantic, command: .moveToWorkspace(1))
         ])
     }
 
     @Test func customModifierHyperWithSameExtraModifierFailsClosed() {
-        let semantic = KeyBinding(keyCode: UInt32(kVK_ANSI_2), modifiers: UInt32(shiftKey), usesHyper: true)
+        let semantic = KeyBinding(keyCode: UInt32(kVK_ANSI_2), modifiers: UInt32(shiftKey), usesModifier: true)
         let plan = HotkeyCenter.registrationPlan(
             for: [
                 HotkeyBinding(id: "moveToWorkspace.1", command: .moveToWorkspace(1), binding: semantic)
             ],
-            hyperTrigger: .key(UInt32(kVK_Shift))
+            modifierTrigger: .key(UInt32(kVK_Shift))
         )
 
-        #expect(plan.failures == [.moveToWorkspace(1): .unsupportedHyperModifiers])
+        #expect(plan.failures == [.moveToWorkspace(1): .unsupportedModifierKeys])
         #expect(plan.registrations.isEmpty)
-        #expect(plan.virtualHyperRegistrations.isEmpty)
+        #expect(plan.virtualModifierRegistrations.isEmpty)
     }
 
     @Test func customModifierHyperSequenceRootWithSameExtraModifierFailsClosed() {
-        let semanticLeader = KeyBinding(keyCode: UInt32(kVK_ANSI_S), modifiers: UInt32(shiftKey), usesHyper: true)
+        let semanticLeader = KeyBinding(keyCode: UInt32(kVK_ANSI_S), modifiers: UInt32(shiftKey), usesModifier: true)
         let sequence = HotkeyTrigger.sequence([
             .leader,
             .chord(KeyBinding(keyCode: UInt32(kVK_Space), modifiers: 0))
@@ -276,19 +276,19 @@ private func makeHotkeyOtherMouseEvent(type: CGEventType, buttonNumber: Int64) -
             for: [
                 HotkeyBinding(id: "focus.left", command: .focus(.left), trigger: sequence)
             ],
-            hyperTrigger: .key(UInt32(kVK_Shift)),
+            modifierTrigger: .key(UInt32(kVK_Shift)),
             leaderKey: semanticLeader
         )
 
-        #expect(plan.failures == [.focus(.left): .unsupportedHyperModifiers])
+        #expect(plan.failures == [.focus(.left): .unsupportedModifierKeys])
         #expect(plan.registrations.isEmpty)
-        #expect(plan.virtualHyperRegistrations.isEmpty)
+        #expect(plan.virtualModifierRegistrations.isEmpty)
     }
 
     @Test func systemSequenceWithModifiedSemanticHyperStepFailsClosed() {
         let sequence = HotkeyTrigger.sequence([
             .leader,
-            .chord(KeyBinding(keyCode: UInt32(kVK_ANSI_H), modifiers: UInt32(shiftKey), usesHyper: true))
+            .chord(KeyBinding(keyCode: UInt32(kVK_ANSI_H), modifiers: UInt32(shiftKey), usesModifier: true))
         ])
         let plan = HotkeyCenter.registrationPlan(
             for: [
@@ -296,37 +296,37 @@ private func makeHotkeyOtherMouseEvent(type: CGEventType, buttonNumber: Int64) -
             ]
         )
 
-        #expect(plan.failures == [.focus(.left): .unsupportedSequenceHyperStep])
+        #expect(plan.failures == [.focus(.left): .unsupportedSequenceModifierStep])
         #expect(plan.registrations.isEmpty)
-        #expect(plan.virtualHyperRegistrations.isEmpty)
+        #expect(plan.virtualModifierRegistrations.isEmpty)
     }
 
     @Test func customSequenceWithSemanticHyperStepFailsClosed() {
         let sequence = HotkeyTrigger.sequence([
             .leader,
-            .chord(KeyBinding(keyCode: UInt32(kVK_ANSI_H), modifiers: 0, usesHyper: true))
+            .chord(KeyBinding(keyCode: UInt32(kVK_ANSI_H), modifiers: 0, usesModifier: true))
         ])
         let plan = HotkeyCenter.registrationPlan(
             for: [
                 HotkeyBinding(id: "focus.left", command: .focus(.left), trigger: sequence)
             ],
-            hyperTrigger: .key(UInt32(kVK_CapsLock))
+            modifierTrigger: .key(UInt32(kVK_CapsLock))
         )
 
-        #expect(plan.failures == [.focus(.left): .unsupportedSequenceHyperStep])
+        #expect(plan.failures == [.focus(.left): .unsupportedSequenceModifierStep])
         #expect(plan.registrations.isEmpty)
-        #expect(plan.virtualHyperRegistrations.isEmpty)
+        #expect(plan.virtualModifierRegistrations.isEmpty)
     }
 
     @Test func semanticHyperConflictsWithLiteralAllModifierCompatibilityChord() {
-        let semantic = KeyBinding(keyCode: UInt32(kVK_ANSI_2), modifiers: 0, usesHyper: true)
+        let semantic = KeyBinding(keyCode: UInt32(kVK_ANSI_2), modifiers: 0, usesModifier: true)
         let literal = KeyBinding(keyCode: UInt32(kVK_ANSI_2), modifiers: KeySymbolMapper.hyperModifiers)
         let plan = HotkeyCenter.registrationPlan(
             for: [
                 HotkeyBinding(id: "switchWorkspace.1", command: .switchWorkspace(1), binding: semantic),
                 HotkeyBinding(id: "focus.left", command: .focus(.left), binding: literal)
             ],
-            hyperTrigger: .system
+            modifierTrigger: .system
         )
 
         #expect(plan.failures == [
@@ -334,7 +334,7 @@ private func makeHotkeyOtherMouseEvent(type: CGEventType, buttonNumber: Int64) -
             .focus(.left): .duplicateBinding
         ])
         #expect(plan.registrations.isEmpty)
-        #expect(plan.virtualHyperRegistrations.isEmpty)
+        #expect(plan.virtualModifierRegistrations.isEmpty)
     }
 
     @Test func literalAllModifierChordConflictsWithSemanticLeaderRoot() {
@@ -348,7 +348,7 @@ private func makeHotkeyOtherMouseEvent(type: CGEventType, buttonNumber: Int64) -
                 HotkeyBinding(id: "openCommandPalette", command: .openCommandPalette, binding: literalLeader),
                 HotkeyBinding(id: "focus.left", command: .focus(.left), trigger: sequence)
             ],
-            hyperTrigger: .system
+            modifierTrigger: .system
         )
 
         #expect(plan.failures == [
@@ -356,7 +356,7 @@ private func makeHotkeyOtherMouseEvent(type: CGEventType, buttonNumber: Int64) -
             .focus(.left): .sequenceRootConflict
         ])
         #expect(plan.registrations.isEmpty)
-        #expect(plan.virtualHyperRegistrations.isEmpty)
+        #expect(plan.virtualModifierRegistrations.isEmpty)
     }
 
     @Test func rawLeaderMatchingCustomHyperTriggerFailsSequenceBindings() {
@@ -370,17 +370,17 @@ private func makeHotkeyOtherMouseEvent(type: CGEventType, buttonNumber: Int64) -
             for: [
                 HotkeyBinding(id: "focus.left", command: .focus(.left), trigger: sequence)
             ],
-            hyperTrigger: .key(UInt32(kVK_CapsLock)),
+            modifierTrigger: .key(UInt32(kVK_CapsLock)),
             leaderKey: rawCapsLeader
         )
 
-        #expect(plan.failures == [.focus(.left): .hyperLeaderConflict])
+        #expect(plan.failures == [.focus(.left): .modifierLeaderConflict])
         #expect(plan.registrations.isEmpty)
-        #expect(plan.virtualHyperRegistrations.isEmpty)
+        #expect(plan.virtualModifierRegistrations.isEmpty)
     }
 
     @Test func semanticHyperLeaderWithCustomHyperTriggerIsAllowed() {
-        let semanticLeader = KeyBinding(keyCode: UInt32(kVK_ANSI_S), modifiers: 0, usesHyper: true)
+        let semanticLeader = KeyBinding(keyCode: UInt32(kVK_ANSI_S), modifiers: 0, usesModifier: true)
         let sequence = HotkeyTrigger.sequence([
             .leader,
             .chord(KeyBinding(keyCode: UInt32(kVK_Space), modifiers: 0))
@@ -390,19 +390,19 @@ private func makeHotkeyOtherMouseEvent(type: CGEventType, buttonNumber: Int64) -
             for: [
                 HotkeyBinding(id: "focus.left", command: .focus(.left), trigger: sequence)
             ],
-            hyperTrigger: .key(UInt32(kVK_CapsLock)),
+            modifierTrigger: .key(UInt32(kVK_CapsLock)),
             leaderKey: semanticLeader
         )
 
         #expect(plan.failures.isEmpty)
         #expect(plan.registrations.isEmpty)
-        #expect(plan.virtualHyperRegistrations == [
+        #expect(plan.virtualModifierRegistrations == [
             HotkeyPlannedRegistration(binding: semanticLeader, action: .sequencePrefix(semanticLeader))
         ])
     }
 
     @Test func semanticHyperLeaderMatchingCustomHyperTriggerFailsSequenceBindings() {
-        let semanticLeader = KeyBinding(keyCode: UInt32(kVK_ANSI_S), modifiers: 0, usesHyper: true)
+        let semanticLeader = KeyBinding(keyCode: UInt32(kVK_ANSI_S), modifiers: 0, usesModifier: true)
         let sequence = HotkeyTrigger.sequence([
             .leader,
             .chord(KeyBinding(keyCode: UInt32(kVK_Space), modifiers: 0))
@@ -412,28 +412,28 @@ private func makeHotkeyOtherMouseEvent(type: CGEventType, buttonNumber: Int64) -
             for: [
                 HotkeyBinding(id: "focus.left", command: .focus(.left), trigger: sequence)
             ],
-            hyperTrigger: .key(UInt32(kVK_ANSI_S)),
+            modifierTrigger: .key(UInt32(kVK_ANSI_S)),
             leaderKey: semanticLeader
         )
 
-        #expect(plan.failures == [.focus(.left): .hyperLeaderConflict])
+        #expect(plan.failures == [.focus(.left): .modifierLeaderConflict])
         #expect(plan.registrations.isEmpty)
-        #expect(plan.virtualHyperRegistrations.isEmpty)
+        #expect(plan.virtualModifierRegistrations.isEmpty)
     }
 
     @Test func directBindingMatchingCustomHyperTriggerFailsRegistration() {
-        let binding = KeyBinding(keyCode: UInt32(kVK_ANSI_S), modifiers: UInt32(shiftKey), usesHyper: true)
+        let binding = KeyBinding(keyCode: UInt32(kVK_ANSI_S), modifiers: UInt32(shiftKey), usesModifier: true)
 
         let plan = HotkeyCenter.registrationPlan(
             for: [
                 HotkeyBinding(id: "focus.left", command: .focus(.left), binding: binding)
             ],
-            hyperTrigger: .key(UInt32(kVK_ANSI_S))
+            modifierTrigger: .key(UInt32(kVK_ANSI_S))
         )
 
-        #expect(plan.failures == [.focus(.left): .hyperLeaderConflict])
+        #expect(plan.failures == [.focus(.left): .modifierLeaderConflict])
         #expect(plan.registrations.isEmpty)
-        #expect(plan.virtualHyperRegistrations.isEmpty)
+        #expect(plan.virtualModifierRegistrations.isEmpty)
     }
 
     @Test func directBindingMatchingOptionModifierFamilyFailsRegistration() {
@@ -443,12 +443,12 @@ private func makeHotkeyOtherMouseEvent(type: CGEventType, buttonNumber: Int64) -
             for: [
                 HotkeyBinding(id: "focus.left", command: .focus(.left), binding: binding)
             ],
-            hyperTrigger: .modifier(UInt32(optionKey))
+            modifierTrigger: .modifier(UInt32(optionKey))
         )
 
-        #expect(plan.failures == [.focus(.left): .hyperLeaderConflict])
+        #expect(plan.failures == [.focus(.left): .modifierLeaderConflict])
         #expect(plan.registrations.isEmpty)
-        #expect(plan.virtualHyperRegistrations.isEmpty)
+        #expect(plan.virtualModifierRegistrations.isEmpty)
     }
 
     @Test func sequenceStepMatchingCustomHyperTriggerFailsRegistration() {
@@ -461,17 +461,17 @@ private func makeHotkeyOtherMouseEvent(type: CGEventType, buttonNumber: Int64) -
             for: [
                 HotkeyBinding(id: "focus.left", command: .focus(.left), trigger: sequence)
             ],
-            hyperTrigger: .key(UInt32(kVK_ANSI_S))
+            modifierTrigger: .key(UInt32(kVK_ANSI_S))
         )
 
-        #expect(plan.failures == [.focus(.left): .hyperLeaderConflict])
+        #expect(plan.failures == [.focus(.left): .modifierLeaderConflict])
         #expect(plan.registrations.isEmpty)
-        #expect(plan.virtualHyperRegistrations.isEmpty)
+        #expect(plan.virtualModifierRegistrations.isEmpty)
     }
 
     @Test func capsLockFlagsChangedUsesFlagStateInsteadOfToggling() {
-        var state = VirtualHyperEventState()
-        let trigger = HyperKeyTrigger.key(UInt32(kVK_CapsLock))
+        var state = VirtualModifierEventState()
+        let trigger = ModifierKeyTrigger.key(UInt32(kVK_CapsLock))
 
         let firstPressHandled = state.handleTriggerFlagsChanged(
             keyCode: UInt32(kVK_CapsLock),
@@ -499,8 +499,8 @@ private func makeHotkeyOtherMouseEvent(type: CGEventType, buttonNumber: Int64) -
     }
 
     @Test func modifierHyperFlagsChangedUsesPhysicalKeyIdentityWhenAggregateFlagStaysActive() {
-        var state = VirtualHyperEventState()
-        let trigger = HyperKeyTrigger.key(UInt32(kVK_Shift))
+        var state = VirtualModifierEventState()
+        let trigger = ModifierKeyTrigger.key(UInt32(kVK_Shift))
 
         let pressHandled = state.handleTriggerFlagsChanged(
             keyCode: UInt32(kVK_Shift),
@@ -520,8 +520,8 @@ private func makeHotkeyOtherMouseEvent(type: CGEventType, buttonNumber: Int64) -
     }
 
     @Test func virtualHyperPassesThroughUnregisteredAutorepeatWithoutConsuming() {
-        var state = VirtualHyperEventState(isActive: true)
-        let trigger = HyperKeyTrigger.key(UInt32(kVK_CapsLock))
+        var state = VirtualModifierEventState(isActive: true)
+        let trigger = ModifierKeyTrigger.key(UInt32(kVK_CapsLock))
         let initialDecision = state.handleKeyDown(
             keyCode: UInt32(kVK_Delete),
             isAutorepeat: false,
@@ -543,8 +543,8 @@ private func makeHotkeyOtherMouseEvent(type: CGEventType, buttonNumber: Int64) -
     }
 
     @Test func registeredVirtualHyperSuppressesInitialAndRepeatKeyDowns() {
-        var state = VirtualHyperEventState(isActive: true)
-        let trigger = HyperKeyTrigger.key(UInt32(kVK_CapsLock))
+        var state = VirtualModifierEventState(isActive: true)
+        let trigger = ModifierKeyTrigger.key(UInt32(kVK_CapsLock))
         let action = HotkeyRegistrationAction.command(.focus(.left))
 
         let initialDecision = state.handleKeyDown(
@@ -568,8 +568,8 @@ private func makeHotkeyOtherMouseEvent(type: CGEventType, buttonNumber: Int64) -
     }
 
     @Test func mouseButtonVirtualHyperDispatchesAndSuppressesRegisteredKey() {
-        var state = VirtualHyperEventState()
-        let trigger = HyperKeyTrigger.mouseButton(4)
+        var state = VirtualModifierEventState()
+        let trigger = ModifierKeyTrigger.mouseButton(4)
         let action = HotkeyRegistrationAction.command(.focus(.left))
 
         let triggerDownHandled = state.handleTriggerMouseDown(4, trigger: trigger)
@@ -603,8 +603,8 @@ private func makeHotkeyOtherMouseEvent(type: CGEventType, buttonNumber: Int64) -
     }
 
     @Test func mouseButtonVirtualHyperPassesThroughUnregisteredKey() {
-        var state = VirtualHyperEventState()
-        let trigger = HyperKeyTrigger.mouseButton(4)
+        var state = VirtualModifierEventState()
+        let trigger = ModifierKeyTrigger.mouseButton(4)
 
         let triggerDownHandled = state.handleTriggerMouseDown(4, trigger: trigger)
         #expect(triggerDownHandled)
@@ -634,9 +634,9 @@ private func makeHotkeyOtherMouseEvent(type: CGEventType, buttonNumber: Int64) -
         let action = HotkeyRegistrationAction.command(.focus(.left))
         center.onCommand = { commands.append($0) }
         center.prepareVirtualHyperForTesting(
-            hyperTrigger: .key(UInt32(kVK_Shift)),
+            modifierTrigger: .key(UInt32(kVK_Shift)),
             registrations: [
-                KeyBinding(keyCode: UInt32(kVK_ANSI_S), modifiers: 0, usesHyper: true): action
+                KeyBinding(keyCode: UInt32(kVK_ANSI_S), modifiers: 0, usesModifier: true): action
             ],
             isActive: true
         )
@@ -665,9 +665,9 @@ private func makeHotkeyOtherMouseEvent(type: CGEventType, buttonNumber: Int64) -
         let action = HotkeyRegistrationAction.command(.focus(.left))
         center.onCommand = { commands.append($0) }
         center.prepareVirtualHyperForTesting(
-            hyperTrigger: .key(UInt32(kVK_Shift)),
+            modifierTrigger: .key(UInt32(kVK_Shift)),
             registrations: [
-                KeyBinding(keyCode: UInt32(kVK_ANSI_S), modifiers: 0, usesHyper: true): action
+                KeyBinding(keyCode: UInt32(kVK_ANSI_S), modifiers: 0, usesModifier: true): action
             ],
             isActive: true,
             sequenceIsActive: true
@@ -686,9 +686,9 @@ private func makeHotkeyOtherMouseEvent(type: CGEventType, buttonNumber: Int64) -
         let action = HotkeyRegistrationAction.command(.focus(.left))
         center.onCommand = { commands.append($0) }
         center.prepareVirtualHyperForTesting(
-            hyperTrigger: .mouseButton(4),
+            modifierTrigger: .mouseButton(4),
             registrations: [
-                KeyBinding(keyCode: UInt32(kVK_ANSI_S), modifiers: 0, usesHyper: true): action
+                KeyBinding(keyCode: UInt32(kVK_ANSI_S), modifiers: 0, usesModifier: true): action
             ]
         )
 
@@ -733,12 +733,12 @@ private func makeHotkeyOtherMouseEvent(type: CGEventType, buttonNumber: Int64) -
     @Test @MainActor func sequenceTapUnavailableSkipsVirtualHyperSequencePrefixSetup() {
         let center = HotkeyCenter()
         defer { center.stop() }
-        var virtualHyperTapSetupCalls = 0
-        let semanticLeader = KeyBinding(keyCode: UInt32(kVK_ANSI_S), modifiers: 0, usesHyper: true)
+        var virtualModifierTapSetupCalls = 0
+        let semanticLeader = KeyBinding(keyCode: UInt32(kVK_ANSI_S), modifiers: 0, usesModifier: true)
         center.sequenceEventAccessProvider = { true }
         center.sequenceTapSetupOverride = { false }
-        center.virtualHyperTapSetupOverride = {
-            virtualHyperTapSetupCalls += 1
+        center.virtualModifierTapSetupOverride = {
+            virtualModifierTapSetupCalls += 1
             return true
         }
         center.updateBindings(
@@ -752,30 +752,30 @@ private func makeHotkeyOtherMouseEvent(type: CGEventType, buttonNumber: Int64) -
                     ])
                 )
             ],
-            hyperTrigger: .key(UInt32(kVK_CapsLock)),
+            modifierTrigger: .key(UInt32(kVK_CapsLock)),
             leaderKey: semanticLeader
         )
 
         center.start()
 
         #expect(center.registrationFailures == [.focus(.left): .eventTapUnavailable])
-        #expect(virtualHyperTapSetupCalls == 0)
+        #expect(virtualModifierTapSetupCalls == 0)
     }
 
-    @Test @MainActor func virtualHyperTapUnavailableFailsVirtualHyperCommands() {
+    @Test @MainActor func virtualModifierTapUnavailableFailsVirtualHyperCommands() {
         let center = HotkeyCenter()
         defer { center.stop() }
         center.sequenceEventAccessProvider = { true }
-        center.virtualHyperTapSetupOverride = { false }
+        center.virtualModifierTapSetupOverride = { false }
         center.updateBindings(
             [
                 HotkeyBinding(
                     id: "switchWorkspace.1",
                     command: .switchWorkspace(1),
-                    binding: KeyBinding(keyCode: UInt32(kVK_ANSI_2), modifiers: UInt32(shiftKey), usesHyper: true)
+                    binding: KeyBinding(keyCode: UInt32(kVK_ANSI_2), modifiers: UInt32(shiftKey), usesModifier: true)
                 )
             ],
-            hyperTrigger: .key(UInt32(kVK_CapsLock))
+            modifierTrigger: .key(UInt32(kVK_CapsLock))
         )
 
         center.start()
@@ -786,37 +786,37 @@ private func makeHotkeyOtherMouseEvent(type: CGEventType, buttonNumber: Int64) -
     @Test @MainActor func unchangedRuntimeConfigurationSkipsHotkeyRebuildUnlessForced() {
         let center = HotkeyCenter()
         defer { center.stop() }
-        var virtualHyperTapSetupCalls = 0
+        var virtualModifierTapSetupCalls = 0
         let bindings = [
             HotkeyBinding(
                 id: "switchWorkspace.1",
                 command: .switchWorkspace(1),
-                binding: KeyBinding(keyCode: UInt32(kVK_ANSI_2), modifiers: 0, usesHyper: true)
+                binding: KeyBinding(keyCode: UInt32(kVK_ANSI_2), modifiers: 0, usesModifier: true)
             )
         ]
-        center.virtualHyperTapSetupOverride = {
-            virtualHyperTapSetupCalls += 1
+        center.virtualModifierTapSetupOverride = {
+            virtualModifierTapSetupCalls += 1
             return true
         }
         center.updateBindings(
             bindings,
-            hyperTrigger: .key(UInt32(kVK_CapsLock))
+            modifierTrigger: .key(UInt32(kVK_CapsLock))
         )
 
         center.start()
-        #expect(virtualHyperTapSetupCalls == 1)
+        #expect(virtualModifierTapSetupCalls == 1)
 
         center.updateBindings(
             bindings,
-            hyperTrigger: .key(UInt32(kVK_CapsLock))
+            modifierTrigger: .key(UInt32(kVK_CapsLock))
         )
-        #expect(virtualHyperTapSetupCalls == 1)
+        #expect(virtualModifierTapSetupCalls == 1)
 
         center.updateBindings(
             bindings,
-            hyperTrigger: .key(UInt32(kVK_CapsLock)),
+            modifierTrigger: .key(UInt32(kVK_CapsLock)),
             force: true
         )
-        #expect(virtualHyperTapSetupCalls == 2)
+        #expect(virtualModifierTapSetupCalls == 2)
     }
 }

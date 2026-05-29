@@ -20,11 +20,11 @@ import Testing
         )
 
         #expect(
-            switchWorkspace.binding == .chord(KeyBinding(keyCode: UInt32(kVK_ANSI_2), modifiers: 0, usesHyper: true))
+            switchWorkspace.binding == .chord(KeyBinding(keyCode: UInt32(kVK_ANSI_2), modifiers: 0, usesModifier: true))
         )
         #expect(
             moveToWorkspace.binding == .chord(
-                KeyBinding(keyCode: UInt32(kVK_ANSI_2), modifiers: UInt32(shiftKey), usesHyper: true)
+                KeyBinding(keyCode: UInt32(kVK_ANSI_2), modifiers: UInt32(shiftKey), usesModifier: true)
             )
         )
     }

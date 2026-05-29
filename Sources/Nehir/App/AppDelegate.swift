@@ -183,6 +183,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         let migrated = result.joined(separator: "\n")
+            .replacingOccurrences(of: "Hyper+", with: "Modifier+")
+            .replacingOccurrences(of: "\"Hyper\"", with: "\"Modifier\"")
         do {
             try FileManager.default.createDirectory(at: nehirConfigDir, withIntermediateDirectories: true)
             try migrated.write(to: nehirSettings, atomically: true, encoding: .utf8)

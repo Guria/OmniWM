@@ -26,7 +26,7 @@ struct CanonicalTOMLConfig: Codable, Equatable {
 
     struct General: Codable, Equatable {
         var hotkeysEnabled: Bool
-        var hyperTrigger: HyperKeyTrigger
+        var modifierTrigger: ModifierKeyTrigger
         var leaderKey: KeyBinding
         var sequenceTimeoutMilliseconds: Int
         var defaultLayoutType: String
@@ -269,10 +269,10 @@ extension CanonicalTOMLConfig.General {
         let defaults = CanonicalTOMLConfig.recoveryDefaults().general
 
         hotkeysEnabled = try container.decode(Bool.self, forKey: .hotkeysEnabled, default: defaults.hotkeysEnabled, recovering: recovering)
-        hyperTrigger = try container.decode(
-            HyperKeyTrigger.self,
-            forKey: .hyperTrigger,
-            default: defaults.hyperTrigger,
+        modifierTrigger = try container.decode(
+            ModifierKeyTrigger.self,
+            forKey: .modifierTrigger,
+            default: defaults.modifierTrigger,
             recovering: recovering
         )
         leaderKey = try container.decode(KeyBinding.self, forKey: .leaderKey, default: defaults.leaderKey, recovering: recovering)
@@ -546,7 +546,7 @@ extension CanonicalTOMLConfig {
     init(export: SettingsExport) {
         general = General(
             hotkeysEnabled: export.hotkeysEnabled,
-            hyperTrigger: export.hyperTrigger,
+            modifierTrigger: export.modifierTrigger,
             leaderKey: export.leaderKey,
             sequenceTimeoutMilliseconds: export.sequenceTimeoutMilliseconds,
             defaultLayoutType: export.defaultLayoutType,
@@ -679,7 +679,7 @@ extension CanonicalTOMLConfig {
             borderColorBlue: borders.color.blue,
             borderColorAlpha: borders.color.alpha,
             hotkeyBindings: HotkeyBindingRegistry.migrateLegacyDefaultWorkspaceBindings(hotkeys),
-            hyperTrigger: general.hyperTrigger,
+            modifierTrigger: general.modifierTrigger,
             leaderKey: general.leaderKey,
             sequenceTimeoutMilliseconds: general.sequenceTimeoutMilliseconds,
             workspaceBarEnabled: workspaceBar.enabled,

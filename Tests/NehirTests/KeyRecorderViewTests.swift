@@ -150,13 +150,13 @@ private func makeOtherMouseEvent(type: NSEvent.EventType, buttonNumber: Int64) -
         view.keyDown(with: event)
 
         #expect(captured == [
-            KeyBinding(keyCode: UInt32(kVK_ANSI_K), modifiers: 0, usesHyper: true)
+            KeyBinding(keyCode: UInt32(kVK_ANSI_K), modifiers: 0, usesModifier: true)
         ])
     }
 
-    @Test func hyperTriggerRecorderCapturesKeyboardKeys() {
-        let view = HyperTriggerRecorderNSView(frame: .zero)
-        var captured: [HyperKeyTrigger] = []
+    @Test func modifierTriggerRecorderCapturesKeyboardKeys() {
+        let view = ModifierTriggerRecorderNSView(frame: .zero)
+        var captured: [ModifierKeyTrigger] = []
         view.onCapture = { captured.append($0) }
 
         let event = makeKeyRecorderEvent(
@@ -171,9 +171,9 @@ private func makeOtherMouseEvent(type: NSEvent.EventType, buttonNumber: Int64) -
         #expect(captured == [.key(UInt32(kVK_F18))])
     }
 
-    @Test func hyperTriggerRecorderCapturesModifierFamily() {
-        let view = HyperTriggerRecorderNSView(frame: .zero)
-        var captured: [HyperKeyTrigger] = []
+    @Test func modifierTriggerRecorderCapturesModifierFamily() {
+        let view = ModifierTriggerRecorderNSView(frame: .zero)
+        var captured: [ModifierKeyTrigger] = []
         view.onCapture = { captured.append($0) }
 
         let event = makeKeyRecorderEvent(
@@ -189,9 +189,9 @@ private func makeOtherMouseEvent(type: NSEvent.EventType, buttonNumber: Int64) -
         #expect(captured == [.modifier(UInt32(optionKey))])
     }
 
-    @Test func hyperTriggerRecorderCapturesMouseButtons() {
-        let view = HyperTriggerRecorderNSView(frame: .zero)
-        var captured: [HyperKeyTrigger] = []
+    @Test func modifierTriggerRecorderCapturesMouseButtons() {
+        let view = ModifierTriggerRecorderNSView(frame: .zero)
+        var captured: [ModifierKeyTrigger] = []
         view.onCapture = { captured.append($0) }
 
         view.otherMouseDown(with: makeOtherMouseEvent(type: .otherMouseDown, buttonNumber: 4))
@@ -201,7 +201,7 @@ private func makeOtherMouseEvent(type: NSEvent.EventType, buttonNumber: Int64) -
 
     @Test func configuredCapsHyperRecordsSemanticChord() {
         let view = KeyRecorderNSView(frame: .zero)
-        view.hyperTrigger = .key(UInt32(kVK_CapsLock))
+        view.modifierTrigger = .key(UInt32(kVK_CapsLock))
         var captured: [KeyBinding] = []
         view.onCapture = { captured.append($0) }
 
@@ -223,15 +223,15 @@ private func makeOtherMouseEvent(type: NSEvent.EventType, buttonNumber: Int64) -
         view.keyDown(with: chordEvent)
 
         #expect(captured == [
-            KeyBinding(keyCode: UInt32(kVK_ANSI_S), modifiers: 0, usesHyper: true)
+            KeyBinding(keyCode: UInt32(kVK_ANSI_S), modifiers: 0, usesModifier: true)
         ])
     }
 
     @Test func configuredOptionHyperRecordsLeftAndRightOptionAsSemanticChord() {
         let leftView = KeyRecorderNSView(frame: .zero)
         let rightView = KeyRecorderNSView(frame: .zero)
-        leftView.hyperTrigger = .modifier(UInt32(optionKey))
-        rightView.hyperTrigger = .modifier(UInt32(optionKey))
+        leftView.modifierTrigger = .modifier(UInt32(optionKey))
+        rightView.modifierTrigger = .modifier(UInt32(optionKey))
         var leftCaptured: [KeyBinding] = []
         var rightCaptured: [KeyBinding] = []
         leftView.onCapture = { leftCaptured.append($0) }
@@ -263,14 +263,14 @@ private func makeOtherMouseEvent(type: NSEvent.EventType, buttonNumber: Int64) -
         rightView.flagsChanged(with: rightTrigger)
         rightView.keyDown(with: chordEvent)
 
-        let expected = KeyBinding(keyCode: UInt32(kVK_ANSI_S), modifiers: 0, usesHyper: true)
+        let expected = KeyBinding(keyCode: UInt32(kVK_ANSI_S), modifiers: 0, usesModifier: true)
         #expect(leftCaptured == [expected])
         #expect(rightCaptured == [expected])
     }
 
     @Test func configuredKeyboardHyperRecordsNextKeyAsSemanticChord() {
         let view = KeyRecorderNSView(frame: .zero)
-        view.hyperTrigger = .key(UInt32(kVK_F18))
+        view.modifierTrigger = .key(UInt32(kVK_F18))
         var captured: [KeyBinding] = []
         view.onCapture = { captured.append($0) }
 
@@ -291,13 +291,13 @@ private func makeOtherMouseEvent(type: NSEvent.EventType, buttonNumber: Int64) -
         view.keyDown(with: chordEvent)
 
         #expect(captured == [
-            KeyBinding(keyCode: UInt32(kVK_ANSI_S), modifiers: 0, usesHyper: true)
+            KeyBinding(keyCode: UInt32(kVK_ANSI_S), modifiers: 0, usesModifier: true)
         ])
     }
 
     @Test func configuredModifierHyperReleaseDoesNotStayActiveWhenMatchingFlagRemains() {
         let view = KeyRecorderNSView(frame: .zero)
-        view.hyperTrigger = .key(UInt32(kVK_Shift))
+        view.modifierTrigger = .key(UInt32(kVK_Shift))
         var captured: [KeyBinding] = []
         view.onCapture = { captured.append($0) }
 
@@ -334,13 +334,13 @@ private func makeOtherMouseEvent(type: NSEvent.EventType, buttonNumber: Int64) -
         view.keyDown(with: bareChord)
 
         #expect(captured == [
-            KeyBinding(keyCode: UInt32(kVK_ANSI_S), modifiers: 0, usesHyper: true)
+            KeyBinding(keyCode: UInt32(kVK_ANSI_S), modifiers: 0, usesModifier: true)
         ])
     }
 
     @Test func configuredMouseHyperRecordsNextKeyAsSemanticChord() {
         let view = KeyRecorderNSView(frame: .zero)
-        view.hyperTrigger = .mouseButton(4)
+        view.modifierTrigger = .mouseButton(4)
         var captured: [KeyBinding] = []
         view.onCapture = { captured.append($0) }
 
@@ -356,7 +356,7 @@ private func makeOtherMouseEvent(type: NSEvent.EventType, buttonNumber: Int64) -
         view.otherMouseUp(with: makeOtherMouseEvent(type: .otherMouseUp, buttonNumber: 4))
 
         #expect(captured == [
-            KeyBinding(keyCode: UInt32(kVK_ANSI_S), modifiers: 0, usesHyper: true)
+            KeyBinding(keyCode: UInt32(kVK_ANSI_S), modifiers: 0, usesModifier: true)
         ])
     }
 

@@ -526,7 +526,7 @@ private func makeMonitorForBarTests(hasNotch: Bool) -> Monitor {
         #expect(frame.height == 24)
     }
 
-    @Test func nonNotchedDisplaysKeepLegacyOverlappingPlacement() {
+    @Test func nonNotchedDisplaysKeepOverlappingPlacement() {
         let monitor = makeMonitorForBarTests(hasNotch: false)
         let frame = WorkspaceBarManager.barFrame(
             fittingWidth: 340,

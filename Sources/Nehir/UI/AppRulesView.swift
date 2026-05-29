@@ -258,9 +258,6 @@ struct AppRuleDetailView: View {
                         Text(action.displayName).tag(action)
                     }
                 }
-                .onChange(of: draft.layoutAction) { _, _ in
-                    draft.usesLegacyAlwaysFloat = false
-                }
 
                 Toggle("Assign to Workspace", isOn: $draft.assignToWorkspaceEnabled)
                     .onChange(of: draft.assignToWorkspaceEnabled) { _, enabled in
@@ -442,9 +439,6 @@ struct AppRuleAddSheet: View {
                         ForEach(WindowRuleLayoutAction.allCases) { action in
                             Text(action.displayName).tag(action)
                         }
-                    }
-                    .onChange(of: draft.layoutAction) { _, _ in
-                        draft.usesLegacyAlwaysFloat = false
                     }
 
                     Toggle("Assign to Workspace", isOn: $draft.assignToWorkspaceEnabled)

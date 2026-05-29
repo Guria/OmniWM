@@ -278,17 +278,17 @@ struct MonitorSettingsStoreTests {
         #expect(result?.maxVisibleColumns == 3)
     }
 
-    @Test func monitorLookupFallsBackToLegacyNameWhenDisplayIdMissing() {
-        let monitor = makeSettingsTestMonitor(displayId: 99, name: "Legacy")
+    @Test func monitorLookupFallsBackToNameWhenDisplayIdMissing() {
+        let monitor = makeSettingsTestMonitor(displayId: 99, name: "Fallback")
         let settings = [
-            MonitorNiriSettings(monitorName: "Legacy", maxVisibleColumns: 2)
+            MonitorNiriSettings(monitorName: "Fallback", maxVisibleColumns: 2)
         ]
 
         let result = MonitorSettingsStore.get(for: monitor, in: settings)
         #expect(result?.maxVisibleColumns == 2)
     }
 
-    @Test func updateMigratesLegacyNameEntryToDisplayIdEntry() {
+    @Test func updateMigratesNameEntryToDisplayIdEntry() {
         var settings = [
             MonitorNiriSettings(monitorName: "Studio Display", maxVisibleColumns: 1)
         ]
@@ -344,22 +344,6 @@ struct MonitorSettingsStoreTests {
         #expect(rawText.localizedCaseInsensitiveContains("restoreCatalog") == false)
     }
 
-    @Test func settingsStoreImportsLegacyConfigSideRestoreCatalogIntoRuntimeState() {
-        let defaults = makeTestDefaults()
-        let configurationDirectory = configurationDirectoryForTests(defaults: defaults)
-        let runtimeStateDirectory = runtimeStateDirectoryForTests(defaults: defaults)
-        let catalog = makePersistedRestoreCatalogFixture(workspaceName: "2")
-        let legacyRuntimeState = RuntimeStateStore(directory: configurationDirectory, deferSaves: false)
-        legacyRuntimeState.windowRestoreCatalog = catalog
-
-        let settings = SettingsStore(
-            persistence: SettingsFilePersistence(directory: configurationDirectory, startWatching: false, deferSaves: false),
-            runtimeState: RuntimeStateStore(directory: runtimeStateDirectory, deferSaves: false)
-        )
-
-        #expect(settings.loadPersistedWindowRestoreCatalog() == catalog)
-        #expect(RuntimeStateStore(directory: runtimeStateDirectory).windowRestoreCatalog == catalog)
-    }
 }
 
 struct SettingsExportTests {
@@ -558,7 +542,7 @@ struct KeyBindingCodecTests {
         #expect(KeySymbolMapper.fromHumanReadable("Command+Keypad Enter") == binding)
     }
 
-    @Test func unknownKeyCodesFallBackToLegacyNumericEncoding() throws {
+    @Test func unknownKeyCodesFallBackToNumericEncoding() throws {
         let binding = KeyBinding(keyCode: 200, modifiers: UInt32(controlKey))
 
         let output = try encodeSingleHotkeyBinding(binding)
@@ -972,83 +956,6 @@ struct SettingsSectionTests {
         #expect(directoryMode & 0o777 == 0o700)
         #expect(fileMode & 0o777 == 0o600)
     }
-
-    @Test func importsLegacyConfigSideWindowRestoreCatalogWhenRuntimeStateMissing() {
-        let defaults = makeTestDefaults()
-        let configurationDirectory = configurationDirectoryForTests(defaults: defaults)
-        let runtimeStateDirectory = runtimeStateDirectoryForTests(defaults: defaults)
-        let catalog = makePersistedRestoreCatalogFixture(workspaceName: "2")
-        let legacyRuntimeState = RuntimeStateStore(directory: configurationDirectory, deferSaves: false)
-        legacyRuntimeState.windowRestoreCatalog = catalog
-        legacyRuntimeState.updaterSkippedReleaseTag = "0.5"
-        legacyRuntimeState.hiddenBarIsCollapsed = false
-
-        let runtimeState = RuntimeStateStore(directory: runtimeStateDirectory, deferSaves: false)
-        let imported = runtimeState.importWindowRestoreCatalogIfMissing(fromLegacyDirectory: configurationDirectory)
-        let reloaded = RuntimeStateStore(directory: runtimeStateDirectory, deferSaves: false)
-        let legacyFileURL = configurationDirectory.appendingPathComponent(RuntimeStateStore.fileName, isDirectory: false)
-
-        #expect(imported)
-        #expect(reloaded.windowRestoreCatalog == catalog)
-        #expect(reloaded.updaterSkippedReleaseTag == nil)
-        #expect(reloaded.hiddenBarIsCollapsed == RuntimeStateStore.defaultHiddenBarIsCollapsed)
-        #expect(FileManager.default.fileExists(atPath: legacyFileURL.path) == false)
-    }
-
-    @Test func legacyConfigSideWindowRestoreCatalogDoesNotReplaceRuntimeStateCatalog() {
-        let defaults = makeTestDefaults()
-        let configurationDirectory = configurationDirectoryForTests(defaults: defaults)
-        let runtimeStateDirectory = runtimeStateDirectoryForTests(defaults: defaults)
-        let legacyCatalog = makePersistedRestoreCatalogFixture(workspaceName: "legacy")
-        let currentCatalog = makePersistedRestoreCatalogFixture(workspaceName: "current")
-        let legacyRuntimeState = RuntimeStateStore(directory: configurationDirectory, deferSaves: false)
-        legacyRuntimeState.windowRestoreCatalog = legacyCatalog
-        let currentRuntimeState = RuntimeStateStore(directory: runtimeStateDirectory, deferSaves: false)
-        currentRuntimeState.windowRestoreCatalog = currentCatalog
-
-        let reloaded = RuntimeStateStore(directory: runtimeStateDirectory, deferSaves: false)
-        let imported = reloaded.importWindowRestoreCatalogIfMissing(fromLegacyDirectory: configurationDirectory)
-        let legacyFileURL = configurationDirectory.appendingPathComponent(RuntimeStateStore.fileName, isDirectory: false)
-
-        #expect(imported == false)
-        #expect(reloaded.windowRestoreCatalog == currentCatalog)
-        #expect(FileManager.default.fileExists(atPath: legacyFileURL.path))
-    }
-
-    @Test func malformedLegacyRuntimeStateDoesNotImportWindowRestoreCatalog() throws {
-        let defaults = makeTestDefaults()
-        let configurationDirectory = configurationDirectoryForTests(defaults: defaults)
-        let runtimeStateDirectory = runtimeStateDirectoryForTests(defaults: defaults)
-        try FileManager.default.createDirectory(at: configurationDirectory, withIntermediateDirectories: true)
-        let legacyFileURL = configurationDirectory.appendingPathComponent(RuntimeStateStore.fileName, isDirectory: false)
-        try Data("not-json".utf8).write(to: legacyFileURL)
-
-        let runtimeState = RuntimeStateStore(directory: runtimeStateDirectory, deferSaves: false)
-        let imported = runtimeState.importWindowRestoreCatalogIfMissing(fromLegacyDirectory: configurationDirectory)
-
-        #expect(imported == false)
-        #expect(runtimeState.windowRestoreCatalog == nil)
-        #expect(FileManager.default.fileExists(atPath: legacyFileURL.path))
-    }
-
-    @Test func legacyRuntimeStateWithoutWindowRestoreCatalogDoesNotImportAncillaryFields() {
-        let defaults = makeTestDefaults()
-        let configurationDirectory = configurationDirectoryForTests(defaults: defaults)
-        let runtimeStateDirectory = runtimeStateDirectoryForTests(defaults: defaults)
-        let legacyRuntimeState = RuntimeStateStore(directory: configurationDirectory, deferSaves: false)
-        legacyRuntimeState.updaterSkippedReleaseTag = "legacy"
-        legacyRuntimeState.hiddenBarIsCollapsed = false
-        let currentRuntimeState = RuntimeStateStore(directory: runtimeStateDirectory, deferSaves: false)
-        currentRuntimeState.updaterSkippedReleaseTag = "current"
-
-        let reloaded = RuntimeStateStore(directory: runtimeStateDirectory, deferSaves: false)
-        let imported = reloaded.importWindowRestoreCatalogIfMissing(fromLegacyDirectory: configurationDirectory)
-
-        #expect(imported == false)
-        #expect(reloaded.windowRestoreCatalog == nil)
-        #expect(reloaded.updaterSkippedReleaseTag == "current")
-        #expect(reloaded.hiddenBarIsCollapsed == RuntimeStateStore.defaultHiddenBarIsCollapsed)
-    }
 }
 
 @MainActor struct HiddenBarRuntimeStateSettingsTests {
@@ -1100,7 +1007,7 @@ struct SettingsSectionTests {
         #expect(reloaded.hiddenBarIsCollapsed == false)
     }
 
-    @Test func legacyStateTOMLKeysDoNotOverrideRuntimeState() throws {
+    @Test func stateTOMLKeysDoNotOverrideRuntimeState() throws {
         let defaults = makeTestDefaults()
         let configurationDirectory = configurationDirectoryForTests(defaults: defaults)
         let runtimeStateDirectory = runtimeStateDirectoryForTests(defaults: defaults)

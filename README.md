@@ -72,20 +72,11 @@ mise run test
 mise run clean
 ```
 
-## Forked from OmniWM
+## Origin
 
-Nehir is a focused fork of [OmniWM](https://github.com/BarutSRB/OmniWM), stripped down to a single layout engine (Niri scrolling columns) with simplified controls.
+Nehir is a highly opinionated fork of [Hiro](https://github.com/BarutSRB/Hiro) (formerly OmniWM), rebuilt around a single layout engine — Niri scrolling columns — with stripped-down controls and no backward-compatibility baggage.
 
-**Changes from upstream:**
-- Removed Dwindle (BSP) layout engine and all multi-layout switching
-- Removed hotkey presets (Vim navigation, Caps Lock modifier)
-- Removed leader key / sequence hotkey support
-- Removed update checker and update notification window
-- Changed default modifier from Option to Cmd+Option (avoids macOS text editing conflicts)
-- Renamed all internal "Hyper" terminology to "Modifier"
-- Simplified hotkey settings UI
-- Added git commit hash display in debug builds
-- Added mise task configuration for build/dev/test/install
+The original project tried to accommodate a wide range of user requests; Nehir deliberately narrows the scope to do one thing well. We're deeply grateful to the original author for the foundation this builds on.
 
 ## License
 

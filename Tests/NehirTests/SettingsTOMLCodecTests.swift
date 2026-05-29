@@ -261,7 +261,7 @@ private extension String {
         #expect(decoded.appRules == export.appRules)
     }
 
-    @Test func ignoresLegacyNiriRowCapKeys() throws {
+    @Test func ignoresUnknownNiriRowCapKeys() throws {
         var export = SettingsExport.defaults()
         export.monitorNiriSettings = [
             MonitorNiriSettings(
@@ -273,22 +273,22 @@ private extension String {
 
         let data = try SettingsTOMLCodec.encode(export)
         let output = try #require(String(data: data, encoding: .utf8))
-        let legacyKey = "maxWindows" + "PerColumn"
+        let unknownKey = "maxWindows" + "PerColumn"
         let edited = output
             .replacingOccurrences(
                 of: "maxVisibleColumns = 2",
-                with: "maxVisibleColumns = 2\n\(legacyKey) = 7"
+                with: "maxVisibleColumns = 2\n\(unknownKey) = 7"
             )
             .replacingOccurrences(
                 of: "maxVisibleColumns = 4",
-                with: "maxVisibleColumns = 4\n\(legacyKey) = 3"
+                with: "maxVisibleColumns = 4\n\(unknownKey) = 3"
             )
 
         let decoded = try SettingsTOMLCodec.decode(Data(edited.utf8))
         #expect(decoded == export)
 
         let reencoded = try #require(String(data: SettingsTOMLCodec.encode(decoded), encoding: .utf8))
-        #expect(reencoded.contains(legacyKey) == false)
+        #expect(reencoded.contains(unknownKey) == false)
     }
 
     @Test func roundTripsNestedColorQuartets() throws {

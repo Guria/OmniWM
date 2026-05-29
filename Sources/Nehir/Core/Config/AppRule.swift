@@ -2,11 +2,6 @@ import Foundation
 
 enum WindowRuleManageAction: String, Codable, CaseIterable, Identifiable {
     case auto
-    case off
-
-    static var allCases: [WindowRuleManageAction] {
-        [.auto]
-    }
 
     var id: String {
         rawValue
@@ -15,7 +10,6 @@ enum WindowRuleManageAction: String, Codable, CaseIterable, Identifiable {
     var displayName: String {
         switch self {
         case .auto: "Automatic"
-        case .off: "Ignore (Legacy)"
         }
     }
 }
@@ -47,7 +41,6 @@ struct AppRule: Codable, Identifiable, Equatable {
         case titleRegex
         case axRole
         case axSubrole
-        case alwaysFloat
         case manage
         case layout
         case assignToWorkspace
@@ -62,7 +55,6 @@ struct AppRule: Codable, Identifiable, Equatable {
     var titleRegex: String?
     var axRole: String?
     var axSubrole: String?
-    var alwaysFloat: Bool?
     var manage: WindowRuleManageAction?
     var layout: WindowRuleLayoutAction?
     var assignToWorkspace: String?
@@ -77,7 +69,6 @@ struct AppRule: Codable, Identifiable, Equatable {
         titleRegex: String? = nil,
         axRole: String? = nil,
         axSubrole: String? = nil,
-        alwaysFloat: Bool? = nil,
         manage: WindowRuleManageAction? = nil,
         layout: WindowRuleLayoutAction? = nil,
         assignToWorkspace: String? = nil,
@@ -91,28 +82,19 @@ struct AppRule: Codable, Identifiable, Equatable {
         self.titleRegex = titleRegex
         self.axRole = axRole
         self.axSubrole = axSubrole
-        self.alwaysFloat = alwaysFloat
         self.manage = manage
         self.layout = layout
         self.assignToWorkspace = assignToWorkspace
         self.minWidth = minWidth
         self.minHeight = minHeight
-        normalizeLegacyManageOff()
     }
 
     var effectiveManageAction: WindowRuleManageAction {
-        guard manage != .off else { return .auto }
-        return manage ?? .auto
+        manage ?? .auto
     }
 
     var effectiveLayoutAction: WindowRuleLayoutAction {
-        if let layout {
-            return layout
-        }
-        if alwaysFloat == true {
-            return .float
-        }
-        return .auto
+        layout ?? .auto
     }
 
     var hasAdvancedMatchers: Bool {
@@ -121,6 +103,10 @@ struct AppRule: Codable, Identifiable, Equatable {
             titleRegex?.isEmpty == false ||
             axRole?.isEmpty == false ||
             axSubrole?.isEmpty == false
+    }
+
+    var showAdvancedMatchers: Bool {
+            hasAdvancedMatchers
     }
 
     var specificity: Int {
@@ -149,35 +135,10 @@ struct AppRule: Codable, Identifiable, Equatable {
         titleRegex = try container.decodeIfPresent(String.self, forKey: .titleRegex)
         axRole = try container.decodeIfPresent(String.self, forKey: .axRole)
         axSubrole = try container.decodeIfPresent(String.self, forKey: .axSubrole)
-        alwaysFloat = try container.decodeIfPresent(Bool.self, forKey: .alwaysFloat)
         manage = try container.decodeIfPresent(WindowRuleManageAction.self, forKey: .manage)
         layout = try container.decodeIfPresent(WindowRuleLayoutAction.self, forKey: .layout)
         assignToWorkspace = try container.decodeIfPresent(String.self, forKey: .assignToWorkspace)
         minWidth = try container.decodeIfPresent(Double.self, forKey: .minWidth)
         minHeight = try container.decodeIfPresent(Double.self, forKey: .minHeight)
-        normalizeLegacyManageOff()
-    }
-
-    func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(id, forKey: .id)
-        try container.encode(bundleId, forKey: .bundleId)
-        try container.encodeIfPresent(appNameSubstring, forKey: .appNameSubstring)
-        try container.encodeIfPresent(titleSubstring, forKey: .titleSubstring)
-        try container.encodeIfPresent(titleRegex, forKey: .titleRegex)
-        try container.encodeIfPresent(axRole, forKey: .axRole)
-        try container.encodeIfPresent(axSubrole, forKey: .axSubrole)
-        try container.encodeIfPresent(alwaysFloat, forKey: .alwaysFloat)
-        try container.encodeIfPresent(manage, forKey: .manage)
-        try container.encodeIfPresent(layout, forKey: .layout)
-        try container.encodeIfPresent(assignToWorkspace, forKey: .assignToWorkspace)
-        try container.encodeIfPresent(minWidth, forKey: .minWidth)
-        try container.encodeIfPresent(minHeight, forKey: .minHeight)
-    }
-
-    private mutating func normalizeLegacyManageOff() {
-        guard manage == .off else { return }
-        manage = nil
-        layout = .float
     }
 }

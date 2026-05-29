@@ -326,13 +326,6 @@ private func installRefreshSpies(
 }
 
 @MainActor
-private func assertNoLegacyReasons(_ recorder: RefreshEventRecorder) {
-    let observedReasons = recorder.relayoutEvents.map(\.0.rawValue) + recorder.fullRescanReasons.map(\.rawValue)
-    #expect(!observedReasons.contains("legacyImmediateCallsite"))
-    #expect(!observedReasons.contains("legacyCallsite"))
-}
-
-@MainActor
 private func resetRefreshSpies(
     on controller: WMController,
     recorder: RefreshEventRecorder
@@ -1161,7 +1154,6 @@ private func syncNiriWorkspaceStatesForRefreshTests(
         #expect(recorder.relayoutEvents.map(\.0) == [.layoutConfigChanged])
         #expect(recorder.relayoutEvents.map(\.1) == [.relayout])
         #expect(recorder.fullRescanReasons.isEmpty)
-        assertNoLegacyReasons(recorder)
 
         resetRefreshSpies(on: controller, recorder: recorder)
 
@@ -1173,7 +1165,6 @@ private func syncNiriWorkspaceStatesForRefreshTests(
         #expect(recorder.relayoutEvents.map(\.0) == [.layoutConfigChanged])
         #expect(recorder.relayoutEvents.map(\.1) == [.relayout])
         #expect(recorder.fullRescanReasons.isEmpty)
-        assertNoLegacyReasons(recorder)
     }
 
     @Test @MainActor func workspaceTransitionFlowsUseImmediateRelayoutOnly() async {
@@ -1188,7 +1179,6 @@ private func syncNiriWorkspaceStatesForRefreshTests(
         #expect(recorder.relayoutEvents.map(\.0) == [.workspaceTransition])
         #expect(recorder.relayoutEvents.map(\.1) == [.immediateRelayout])
         #expect(recorder.fullRescanReasons.isEmpty)
-        assertNoLegacyReasons(recorder)
     }
 
     @Test @MainActor func workspaceSwitchUsesImmediateRelayoutOnly() async {
@@ -1203,7 +1193,6 @@ private func syncNiriWorkspaceStatesForRefreshTests(
         #expect(recorder.relayoutEvents.map(\.0) == [.workspaceTransition])
         #expect(recorder.relayoutEvents.map(\.1) == [.immediateRelayout])
         #expect(recorder.fullRescanReasons.isEmpty)
-        assertNoLegacyReasons(recorder)
     }
 
     @Test @MainActor func reselectingActiveWorkspaceDoesNotTriggerRefreshOrClearBorder() async {
@@ -1257,7 +1246,6 @@ private func syncNiriWorkspaceStatesForRefreshTests(
         #expect(recorder.visibilityReasons.isEmpty)
         #expect(recorder.fullRescanReasons.isEmpty)
         #expect(recorder.windowRemovalReasons.isEmpty)
-        assertNoLegacyReasons(recorder)
     }
 
     @Test @MainActor func crossMonitorWorkspaceSwitchSkipsAnimationWhenTargetIsAlreadyVisible() async {
@@ -1317,7 +1305,6 @@ private func syncNiriWorkspaceStatesForRefreshTests(
         #expect(recorder.relayoutEvents.map(\.0) == [.workspaceTransition])
         #expect(recorder.relayoutEvents.map(\.1) == [.immediateRelayout])
         #expect(recorder.fullRescanReasons.isEmpty)
-        assertNoLegacyReasons(recorder)
     }
 
     @Test @MainActor func focusWorkspaceAnywhereUsesImmediateRelayoutOnly() async {
@@ -1332,7 +1319,6 @@ private func syncNiriWorkspaceStatesForRefreshTests(
         #expect(recorder.relayoutEvents.map(\.0) == [.workspaceTransition])
         #expect(recorder.relayoutEvents.map(\.1) == [.immediateRelayout])
         #expect(recorder.fullRescanReasons.isEmpty)
-        assertNoLegacyReasons(recorder)
     }
 
     @Test @MainActor func workspaceBackAndForthUsesImmediateRelayoutOnly() async {
@@ -1350,7 +1336,6 @@ private func syncNiriWorkspaceStatesForRefreshTests(
         #expect(recorder.relayoutEvents.map(\.0) == [.workspaceTransition])
         #expect(recorder.relayoutEvents.map(\.1) == [.immediateRelayout])
         #expect(recorder.fullRescanReasons.isEmpty)
-        assertNoLegacyReasons(recorder)
     }
 
     @Test @MainActor func workspaceSwitchCommandsRequestRememberedTargetFocus() async {
@@ -1482,7 +1467,6 @@ private func syncNiriWorkspaceStatesForRefreshTests(
         #expect(recorder.relayoutEvents.map(\.1) == [.immediateRelayout])
         #expect(controller.workspaceManager.lastFocusedToken(in: targetWorkspaceId)?.windowId == 9102)
         #expect(orderedWindowIds == [9101, 9102, 9103])
-        assertNoLegacyReasons(recorder)
     }
 
     @Test @MainActor func paletteSummonWindowRightIntoNiriUsesCapturedAnchorWhenManagedFocusIsNil() async {
@@ -1534,7 +1518,6 @@ private func syncNiriWorkspaceStatesForRefreshTests(
         #expect(controller.workspaceManager.workspace(for: summonedHandle.id) == targetWorkspaceId)
         #expect(controller.workspaceManager.lastFocusedToken(in: targetWorkspaceId)?.windowId == 9302)
         #expect(orderedWindowIds == [9301, 9302, 9303])
-        assertNoLegacyReasons(recorder)
     }
 
     @Test @MainActor func paletteSummonWindowRightIntoNiriNoOpsWhenAnchorDisappears() async {
@@ -1579,7 +1562,6 @@ private func syncNiriWorkspaceStatesForRefreshTests(
         #expect(recorder.relayoutEvents.isEmpty)
         #expect(recorder.fullRescanReasons.isEmpty)
         #expect(controller.workspaceManager.workspace(for: summonedHandle.id) == sourceWorkspaceId)
-        assertNoLegacyReasons(recorder)
     }
 
     @Test @MainActor func inactiveWorkspaceAppActivationUsesImmediateRelayoutOnly() async {
@@ -1618,7 +1600,6 @@ private func syncNiriWorkspaceStatesForRefreshTests(
         #expect(recorder.relayoutEvents.map(\.0) == [.appActivationTransition])
         #expect(recorder.relayoutEvents.map(\.1) == [.immediateRelayout])
         #expect(recorder.fullRescanReasons.isEmpty)
-        assertNoLegacyReasons(recorder)
     }
 
     @Test @MainActor func inactiveWorkspaceHandleAppActivationUsesImmediateRelayoutOnly() async {
@@ -1671,7 +1652,6 @@ private func syncNiriWorkspaceStatesForRefreshTests(
         #expect(recorder.relayoutEvents.map(\.0) == [.appActivationTransition])
         #expect(recorder.relayoutEvents.map(\.1) == [.immediateRelayout])
         #expect(recorder.fullRescanReasons.isEmpty)
-        assertNoLegacyReasons(recorder)
     }
 
     @Test @MainActor func inactiveWorkspaceHandleAppActivationRevealsHiddenWindow() async {
@@ -3075,7 +3055,6 @@ private func syncNiriWorkspaceStatesForRefreshTests(
         #expect(recorder.relayoutEvents.map(\.0) == [.gapsChanged])
         #expect(recorder.relayoutEvents.map(\.1) == [.relayout])
         #expect(recorder.fullRescanReasons.isEmpty)
-        assertNoLegacyReasons(recorder)
     }
 
     @Test @MainActor func appHideAndUnhideUseVisibilityRefreshOnly() async {
@@ -3096,7 +3075,6 @@ private func syncNiriWorkspaceStatesForRefreshTests(
         #expect(recorder.relayoutEvents.isEmpty)
         #expect(recorder.fullRescanReasons.isEmpty)
         #expect(recorder.windowRemovalReasons.isEmpty)
-        assertNoLegacyReasons(recorder)
 
         resetRefreshSpies(on: controller, recorder: recorder)
 
@@ -3107,7 +3085,6 @@ private func syncNiriWorkspaceStatesForRefreshTests(
         #expect(recorder.relayoutEvents.isEmpty)
         #expect(recorder.fullRescanReasons.isEmpty)
         #expect(recorder.windowRemovalReasons.isEmpty)
-        assertNoLegacyReasons(recorder)
     }
 
     @Test @MainActor func fullRescanQueuesLowerPriorityRequestsAsFollowUps() async {
@@ -3733,7 +3710,6 @@ private func syncNiriWorkspaceStatesForRefreshTests(
 
         #expect(recorder.fullRescanReasons == [.appLaunched])
         #expect(recorder.relayoutEvents.isEmpty)
-        assertNoLegacyReasons(recorder)
 
         resetRefreshSpies(on: controller, recorder: recorder)
         lifecycleManager.handleAppTerminated(pid: getpid())
@@ -3741,7 +3717,6 @@ private func syncNiriWorkspaceStatesForRefreshTests(
 
         #expect(recorder.fullRescanReasons == [.appTerminated])
         #expect(recorder.relayoutEvents.isEmpty)
-        assertNoLegacyReasons(recorder)
     }
 
     @Test @MainActor func swapCurrentWorkspaceWithMonitorDoesNotRelayoutAcrossFixedHomes() async {
@@ -3754,7 +3729,6 @@ private func syncNiriWorkspaceStatesForRefreshTests(
 
         #expect(recorder.relayoutEvents.isEmpty)
         #expect(recorder.fullRescanReasons.isEmpty)
-        assertNoLegacyReasons(recorder)
     }
 
     @Test @MainActor func moveWindowToWorkspaceOnMonitorUsesImmediateRelayoutOnly() async {
@@ -3778,7 +3752,6 @@ private func syncNiriWorkspaceStatesForRefreshTests(
         #expect(recorder.relayoutEvents.map(\.0) == [.workspaceTransition])
         #expect(recorder.relayoutEvents.map(\.1) == [.immediateRelayout])
         #expect(recorder.fullRescanReasons.isEmpty)
-        assertNoLegacyReasons(recorder)
     }
 
     @Test @MainActor func navigateToWindowInternalUsesImmediateRelayoutOnly() async {
@@ -3809,7 +3782,6 @@ private func syncNiriWorkspaceStatesForRefreshTests(
         #expect(recorder.relayoutEvents.map(\.0) == [.workspaceTransition])
         #expect(recorder.relayoutEvents.map(\.1) == [.immediateRelayout])
         #expect(recorder.fullRescanReasons.isEmpty)
-        assertNoLegacyReasons(recorder)
     }
 
     @Test @MainActor func focusWindowFromBarRevealsHiddenWindowOnInactiveWorkspace() async {
@@ -3936,7 +3908,6 @@ private func syncNiriWorkspaceStatesForRefreshTests(
         await waitForRefreshWork(on: controller)
         #expect(recorder.fullRescanReasons == [.appTerminated])
         #expect(recorder.relayoutEvents.isEmpty)
-        assertNoLegacyReasons(recorder)
     }
 
     @Test func destroyNotificationRefconRoundTripsWindowId() {
@@ -4034,7 +4005,6 @@ private func syncNiriWorkspaceStatesForRefreshTests(
             )
             #expect(recorder.fullRescanReasons.isEmpty)
             #expect(recorder.visibilityReasons.isEmpty)
-            assertNoLegacyReasons(recorder)
         }
     }
 

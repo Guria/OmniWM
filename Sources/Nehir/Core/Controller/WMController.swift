@@ -137,11 +137,6 @@ final class WMController {
     )
     @ObservationIgnored
     private lazy var commandPaletteController: CommandPaletteController = .init(motionPolicy: motionPolicy)
-    @ObservationIgnored
-    private lazy var sponsorsWindowController: SponsorsWindowController = .init(
-        motionPolicy: motionPolicy,
-        ownedWindowRegistry: ownedWindowRegistry
-    )
 
     var isTransferringWindow: Bool = false
     var hiddenAppPIDs: Set<pid_t> = []
@@ -2388,10 +2383,6 @@ final class WMController {
             maxTotalBytes: settings.clipboardMaxTotalBytes,
             storageDirectory: clipboardHistoryDirectory
         )
-    }
-
-    func openSponsorsWindow() {
-        sponsorsWindowController.show()
     }
 
     func openMenuAnywhere() {

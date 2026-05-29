@@ -17,8 +17,6 @@ final class StatusBarMenuBuilder {
     var settingsFileActionPerformer: (SettingsFileAction, SettingsStore) throws -> SettingsFileStatus
     var ipcMenuEnabled = false
     var cliManager: AppCLIManager?
-    var checkForUpdatesAction: (() -> Void)?
-    var updateCoordinator: (any AppUpdateCoordinating)?
 
     private var toggleViews: [String: MenuToggleRowView] = [:]
 
@@ -81,13 +79,6 @@ final class StatusBarMenuBuilder {
         addSettingsSection(to: menu)
 
         menu.addItem(createDivider())
-
-        menu.addItem(createSectionLabel("LINKS"))
-        addLinksSection(to: menu)
-
-        menu.addItem(createDivider())
-
-        addSponsorsSection(to: menu)
 
         menu.addItem(createDivider())
 
@@ -256,19 +247,6 @@ final class StatusBarMenuBuilder {
     }
 
     private func addSettingsSection(to menu: NSMenu) {
-        if checkForUpdatesAction != nil {
-            let updatesRow = MenuActionRowView(
-                icon: "arrow.down.circle",
-                label: "Check for Updates...",
-                motionPolicy: motionPolicy
-            ) { [weak self] in
-                self?.performCheckForUpdatesAction()
-            }
-            let updatesItem = NSMenuItem()
-            updatesItem.view = updatesRow
-            menu.addItem(updatesItem)
-        }
-
         let appRulesRow = MenuActionRowView(
             icon: "slider.horizontal.3",
             label: "App Rules",
@@ -291,8 +269,7 @@ final class StatusBarMenuBuilder {
             guard let self, let controller = self.controller else { return }
             SettingsWindowController.shared.show(
                 settings: self.settings,
-                controller: controller,
-                updateCoordinator: self.updateCoordinator
+                controller: controller
             )
         }
         let settingsItem = NSMenuItem()
@@ -322,10 +299,6 @@ final class StatusBarMenuBuilder {
         let openSettingsFileItem = NSMenuItem()
         openSettingsFileItem.view = openSettingsFileRow
         menu.addItem(openSettingsFileItem)
-    }
-
-    func performCheckForUpdatesAction() {
-        checkForUpdatesAction?()
     }
 
     func performSettingsFileAction(_ action: SettingsFileAction) {
@@ -411,63 +384,6 @@ final class StatusBarMenuBuilder {
         case let .homebrewManaged(linkURL):
             return "Homebrew already manages `nehirctl` at \(linkURL.path)."
         }
-    }
-
-    private func addLinksSection(to menu: NSMenu) {
-        let githubRow = MenuActionRowView(
-            icon: "link",
-            label: "GitHub",
-            isExternal: true,
-            motionPolicy: motionPolicy
-        ) {
-            if let url = URL(string: "https://github.com/BarutSRB/OmniWM") {
-                NSWorkspace.shared.open(url)
-            }
-        }
-        let githubItem = NSMenuItem()
-        githubItem.view = githubRow
-        menu.addItem(githubItem)
-
-        let sponsorGithubRow = MenuActionRowView(
-            icon: "heart",
-            label: "Sponsor on GitHub",
-            isExternal: true,
-            motionPolicy: motionPolicy
-        ) {
-            if let url = URL(string: "https://github.com/sponsors/BarutSRB") {
-                NSWorkspace.shared.open(url)
-            }
-        }
-        let sponsorGithubItem = NSMenuItem()
-        sponsorGithubItem.view = sponsorGithubRow
-        menu.addItem(sponsorGithubItem)
-
-        let sponsorPaypalRow = MenuActionRowView(
-            icon: "heart",
-            label: "Sponsor on PayPal",
-            isExternal: true,
-            motionPolicy: motionPolicy
-        ) {
-            if let url = URL(string: "https://paypal.me/beacon2024") {
-                NSWorkspace.shared.open(url)
-            }
-        }
-        let sponsorPaypalItem = NSMenuItem()
-        sponsorPaypalItem.view = sponsorPaypalRow
-        menu.addItem(sponsorPaypalItem)
-    }
-
-    private func addSponsorsSection(to menu: NSMenu) {
-        let sponsorsRow = MenuActionRowView(
-            icon: "sparkles",
-            label: "Omni Sponsors",
-            motionPolicy: motionPolicy
-        ) { [weak self] in
-            self?.controller?.openSponsorsWindow()
-        }
-        let sponsorsItem = NSMenuItem()
-        sponsorsItem.view = sponsorsRow
-        menu.addItem(sponsorsItem)
     }
 
     private func addQuitSection(to menu: NSMenu) {

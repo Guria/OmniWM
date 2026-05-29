@@ -4,7 +4,6 @@ struct SettingsDetailView: View {
     let section: SettingsSection
     @Bindable var settings: SettingsStore
     @Bindable var controller: WMController
-    let updateCoordinator: (any AppUpdateCoordinating)?
 
     var body: some View {
         contentView
@@ -21,7 +20,6 @@ struct SettingsDetailView: View {
             GeneralSettingsTab(
                 settings: settings,
                 controller: controller,
-                updateCoordinator: updateCoordinator
             )
         case .niri:
             NiriSettingsTab(settings: settings, controller: controller)

@@ -11,7 +11,6 @@ final class SettingsWindowController {
     func show(
         settings: SettingsStore,
         controller: WMController,
-        updateCoordinator: (any AppUpdateCoordinating)? = nil
     ) {
         if let window {
             window.makeKeyAndOrderFront(nil)
@@ -22,7 +21,6 @@ final class SettingsWindowController {
         let settingsView = SettingsView(
             settings: settings,
             controller: controller,
-            updateCoordinator: updateCoordinator
         )
 
         let hosting = NSHostingController(rootView: settingsView)

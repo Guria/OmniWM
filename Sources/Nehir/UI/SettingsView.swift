@@ -3,7 +3,6 @@ import SwiftUI
 struct SettingsView: View {
     @Bindable var settings: SettingsStore
     @Bindable var controller: WMController
-    let updateCoordinator: (any AppUpdateCoordinating)?
     @State private var selectedSection: SettingsSection = .general
 
     var body: some View {
@@ -13,8 +12,7 @@ struct SettingsView: View {
             SettingsDetailView(
                 section: selectedSection,
                 settings: settings,
-                controller: controller,
-                updateCoordinator: updateCoordinator
+                controller: controller
             )
         }
         .navigationSplitViewStyle(.balanced)
@@ -25,7 +23,6 @@ struct SettingsView: View {
 struct GeneralSettingsTab: View {
     @Bindable var settings: SettingsStore
     @Bindable var controller: WMController
-    let updateCoordinator: (any AppUpdateCoordinating)?
 
     var body: some View {
         let animationsEnabled = Binding(
@@ -66,19 +63,6 @@ struct GeneralSettingsTab: View {
                     }
                     .disabled(!settings.statusBarShowWorkspaceName)
                 SettingsCaption("Shows the active workspace and focused app beside the menu bar icon")
-            }
-
-            Section("Updates") {
-                Toggle("Check for Updates Automatically", isOn: $settings.updateChecksEnabled)
-
-                Button("Check for Updates...") {
-                    updateCoordinator?.checkForUpdatesManually()
-                }
-                .disabled(updateCoordinator == nil)
-
-                SettingsCaption(
-                    "Nehir checks the latest GitHub release once per day on launch. Updates stay manual and the popup includes both the GitHub page and the Homebrew command."
-                )
             }
 
             Section("Layout") {

@@ -61,7 +61,6 @@ struct SettingsSceneRedirectView: View {
         SettingsWindowController.shared.show(
             settings: settings,
             controller: controller,
-            updateCoordinator: bootstrap.updateCoordinator
         )
 
         guard let window else { return }

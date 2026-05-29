@@ -5,20 +5,16 @@ import Observation
 final class AppBootstrapState {
     var settings: SettingsStore?
     var controller: WMController?
-    var updateCoordinator: (any AppUpdateCoordinating)?
 }
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     nonisolated(unsafe) weak static var sharedBootstrap: AppBootstrapState?
     static var ipcServerFactoryForTests: ((WMController) -> IPCServerLifecycle)?
-    static var updateCoordinatorFactoryForTests: ((SettingsStore, WMController, RuntimeStateStore)
-        -> any AppUpdateCoordinating)?
 
     private var statusBarController: StatusBarController?
     private var ipcServer: IPCServerLifecycle?
     private var cliManager: AppCLIManager?
-    private var updateCoordinator: (any AppUpdateCoordinating)?
     private var runtimeStateStore: RuntimeStateStore?
 
     func applicationDidFinishLaunching(_: Notification) {
@@ -67,21 +63,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
         controller.applyPersistedSettings(settings)
         let cliManager = AppCLIManager()
-        let updateCoordinator = Self.updateCoordinatorFactoryForTests?(settings, controller, runtimeState)
-            ?? UpdateCoordinator(settings: settings, runtimeState: runtimeState)
         self.cliManager = cliManager
-        self.updateCoordinator = updateCoordinator
 
         AppDelegate.sharedBootstrap?.settings = settings
         AppDelegate.sharedBootstrap?.controller = controller
-        AppDelegate.sharedBootstrap?.updateCoordinator = updateCoordinator
 
         statusBarController = StatusBarController(
             settings: settings,
             controller: controller,
             hiddenBarController: hiddenBarController,
             cliManager: cliManager,
-            updateCoordinator: updateCoordinator
         )
         controller.statusBarController = statusBarController
         settings.onIPCEnabledChanged = { [weak self, weak controller] isEnabled in
@@ -114,7 +105,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             )
             settings.ipcEnabled = false
         }
-        updateCoordinator.startAutomaticChecks()
     }
 
     func startIPCServer(controller: WMController) throws {

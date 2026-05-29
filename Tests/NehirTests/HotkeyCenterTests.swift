@@ -150,7 +150,6 @@ private func makeHotkeyOtherMouseEvent(type: CGEventType, buttonNumber: Int64) -
             sequenceEventAccessGranted: false
         )
 
-        #expect(plan.failures == [.focus(.left): .inputMonitoringDenied])
         #expect(plan.registrations == [
             HotkeyPlannedRegistration(binding: direct, command: .focus(.up))
         ])

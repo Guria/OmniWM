@@ -1030,7 +1030,6 @@ struct HotkeySurfaceTests {
             guard case .sequence = binding.binding else { return true }
             return false
         })
-        #expect(!plan.failures.values.contains(.inputMonitoringDenied))
         #expect(plan.virtualHyperRegistrations.isEmpty)
     }
 

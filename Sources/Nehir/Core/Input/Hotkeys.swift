@@ -31,7 +31,6 @@ enum HotkeyRegistrationFailureReason: Equatable {
     case hyperLeaderConflict
     case unsupportedHyperModifiers
     case unsupportedSequenceHyperStep
-    case inputMonitoringDenied
     case eventTapUnavailable
     case systemReserved
 }
@@ -984,11 +983,6 @@ extension HotkeyCenter {
             mark(candidate.command, .unsupportedHyperModifiers)
         }
 
-        if !sequenceEventAccessGranted {
-            for candidate in sequenceCandidates {
-                mark(candidate.command, .inputMonitoringDenied)
-            }
-        }
 
         var registrations: [HotkeyPlannedRegistration] = []
         var virtualHyperRegistrations: [HotkeyPlannedRegistration] = []

@@ -57,25 +57,9 @@ private final class TestIPCServer: IPCServerLifecycle {
 }
 
 @MainActor
-private final class TestUpdateCoordinator: AppUpdateCoordinating {
-    private let onStart: @MainActor () -> Void
-
-    init(onStart: @escaping @MainActor () -> Void = {}) {
-        self.onStart = onStart
-    }
-
-    func startAutomaticChecks() {
-        onStart()
-    }
-
-    func checkForUpdatesManually() {}
-}
-
-@MainActor
 private func resetAppDelegateTestFactories() {
     AppDelegate.sharedBootstrap = nil
     AppDelegate.ipcServerFactoryForTests = nil
-    AppDelegate.updateCoordinatorFactoryForTests = nil
 }
 
 @Suite(.serialized) @MainActor struct AppDelegateIPCTests {
@@ -145,29 +129,6 @@ private func resetAppDelegateTestFactories() {
 
         #expect(observedStart)
         #expect(observedStop)
-    }
-
-    @Test func finishBootstrapStartsUpdateChecksOnlyAfterStatusBarSetup() {
-        var observedControllerStatusBar = false
-        var bootstrappedController: WMController?
-        AppDelegate.ipcServerFactoryForTests = { _ in
-            TestIPCServer()
-        }
-        AppDelegate.updateCoordinatorFactoryForTests = { _, controller, _ in
-            bootstrappedController = controller
-            return TestUpdateCoordinator {
-                observedControllerStatusBar = controller.statusBarController != nil
-            }
-        }
-        defer {
-            resetAppDelegateTestFactories()
-            bootstrappedController?.statusBarController?.cleanup()
-        }
-
-        let appDelegate = AppDelegate()
-        appDelegate.finishBootstrap()
-
-        #expect(observedControllerStatusBar)
     }
 
     @Test func startIPCServerMakesSocketReachableAndTerminateUnlinksSocket() async throws {

@@ -5,7 +5,7 @@ import Testing
 
 private func makeStatusBarMenuTestDirectory() -> URL {
     let directory = FileManager.default.temporaryDirectory
-        .appendingPathComponent("omniwm-status-bar-menu-tests", isDirectory: true)
+        .appendingPathComponent("nehir-status-bar-menu-tests", isDirectory: true)
         .appendingPathComponent(UUID().uuidString, isDirectory: true)
     try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     return directory
@@ -66,24 +66,6 @@ private func makeStatusBarMenuTestDirectory() -> URL {
         try actionRow(in: menu, labeled: "Edit Settings File").performActionForTests()
 
         #expect(performedActions == [.reveal, .open])
-    }
-
-    @Test func buildMenuIncludesCheckForUpdatesRowAndDelegatesAction() {
-        let controller = makeLayoutPlanTestController()
-        let builder = StatusBarMenuBuilder(settings: controller.settings, controller: controller)
-        var didCheckForUpdates = false
-        builder.checkForUpdatesAction = {
-            didCheckForUpdates = true
-        }
-
-        let menu = builder.buildMenu()
-        let labels = menu.items.compactMap(\.view).flatMap(textLabels(in:))
-
-        #expect(labels.contains("Check for Updates..."))
-
-        builder.performCheckForUpdatesAction()
-
-        #expect(didCheckForUpdates)
     }
 
     @Test func buildMenuIncludesIPCSectionAndCLIInstallActionWhenEnabled() throws {

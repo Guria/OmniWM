@@ -17,8 +17,8 @@ struct NehirStoragePathsTests {
         let homeDirectory = URL(fileURLWithPath: "/Users/example", isDirectory: true)
         let paths = NehirStoragePaths.resolve(environment: [:], homeDirectory: homeDirectory)
 
-        #expect(paths.configDirectory.path == "/Users/example/.config/omniwm")
-        #expect(paths.stateDirectory.path == "/Users/example/.local/state/omniwm")
+        #expect(paths.configDirectory.path == "/Users/example/.config/nehir")
+        #expect(paths.stateDirectory.path == "/Users/example/.local/state/nehir")
     }
 
     @Test func absoluteEnvironmentOverridesWin() {
@@ -31,8 +31,8 @@ struct NehirStoragePathsTests {
             homeDirectory: homeDirectory
         )
 
-        #expect(paths.configDirectory.path == "/Volumes/Profile/config/omniwm")
-        #expect(paths.stateDirectory.path == "/Volumes/Profile/state/omniwm")
+        #expect(paths.configDirectory.path == "/Volumes/Profile/config/nehir")
+        #expect(paths.stateDirectory.path == "/Volumes/Profile/state/nehir")
     }
 
     @Test func emptyAndRelativeEnvironmentValuesFallBack() {
@@ -45,8 +45,8 @@ struct NehirStoragePathsTests {
             homeDirectory: homeDirectory
         )
 
-        #expect(paths.configDirectory.path == "/Users/example/.config/omniwm")
-        #expect(paths.stateDirectory.path == "/Users/example/.local/state/omniwm")
+        #expect(paths.configDirectory.path == "/Users/example/.config/nehir")
+        #expect(paths.stateDirectory.path == "/Users/example/.local/state/nehir")
     }
 }
 
@@ -588,16 +588,16 @@ struct KeyBindingCodecTests {
 
         let output = try encodeSingleHotkeyBinding(binding)
 
-        #expect(binding.displayString == "Hyper+Space")
-        #expect(binding.humanReadableString == "Hyper+Space")
-        #expect(KeySymbolMapper.fromHumanReadable("Hyper+Space") == binding)
-        #expect(output.contains("binding = \"Hyper+Space\""))
+        #expect(binding.displayString == "Modifier+Space")
+        #expect(binding.humanReadableString == "Modifier+Space")
+        #expect(KeySymbolMapper.fromHumanReadable("Modifier+Space") == binding)
+        #expect(output.contains("binding = \"Modifier+Space\""))
     }
 
     @Test func literalAllModifiersRemainDistinctFromSemanticHyper() {
         let literal = KeyBinding(
             keyCode: UInt32(kVK_Space),
-            modifiers: KeySymbolMapper.hyperModifiers
+            modifiers: KeySymbolMapper.realHyperModifiers
         )
         let semantic = KeyBinding(
             keyCode: UInt32(kVK_Space),
@@ -677,7 +677,7 @@ struct KeyBindingCodecTests {
         let decoded = try SettingsTOMLCodec.decode(data)
         let output = try #require(String(data: data, encoding: .utf8))
 
-        #expect(output.contains("leaderKey = \"Hyper+Space\""))
+        #expect(output.contains("leaderKey = \"Modifier+Space\""))
         #expect(output.contains("sequenceTimeoutMilliseconds = 800"))
         #expect(output.contains("binding = \"Leader, H\""))
         #expect(decoded.hotkeyBindings == [hotkey])
@@ -1063,25 +1063,6 @@ struct HotkeySurfaceTests {
         )
 
         let conflicts = settings.findLeaderRootConflicts(for: candidateLeader)
-
-        #expect(conflicts.map(\.id) == ["focus.left"])
-    }
-
-    @Test func leaderRootConflictsUseDefaultOptionHyperCompatibility() {
-        let settings = SettingsStore(defaults: makeTestDefaults())
-        settings.updateBinding(
-            for: "focus.left",
-            newBinding: KeyBinding(keyCode: UInt32(kVK_Space), modifiers: UInt32(optionKey))
-        )
-        settings.updateTrigger(
-            for: "focus.right",
-            newTrigger: .sequence([
-                .leader,
-                .chord(KeyBinding(keyCode: UInt32(kVK_ANSI_L), modifiers: 0))
-            ])
-        )
-
-        let conflicts = settings.findLeaderRootConflicts(for: KeyBinding.defaultLeader)
 
         #expect(conflicts.map(\.id) == ["focus.left"])
     }

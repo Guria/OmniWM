@@ -121,7 +121,7 @@ private func makeHotkeyEditorDefaults() -> UserDefaults {
             .chord(KeyBinding(keyCode: UInt32(kVK_ANSI_H), modifiers: 0))
         ])
         let literal = HotkeyTrigger.sequence([
-            .chord(KeyBinding(keyCode: UInt32(kVK_Space), modifiers: KeySymbolMapper.hyperModifiers)),
+            .chord(KeyBinding(keyCode: UInt32(kVK_Space), modifiers: KeySymbolMapper.realHyperModifiers)),
             .chord(KeyBinding(keyCode: UInt32(kVK_ANSI_H), modifiers: 0))
         ])
 
@@ -149,7 +149,7 @@ private func makeHotkeyEditorDefaults() -> UserDefaults {
             .chord(KeyBinding(keyCode: UInt32(kVK_ANSI_H), modifiers: 0))
         ])
         let literalRoot = HotkeyTrigger.sequence([
-            .chord(KeyBinding(keyCode: UInt32(kVK_Space), modifiers: KeySymbolMapper.hyperModifiers)),
+            .chord(KeyBinding(keyCode: UInt32(kVK_Space), modifiers: KeySymbolMapper.realHyperModifiers)),
             .chord(KeyBinding(keyCode: UInt32(kVK_ANSI_L), modifiers: 0))
         ])
 

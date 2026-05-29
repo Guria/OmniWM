@@ -69,7 +69,7 @@ private func makeHotkeyOtherMouseEvent(type: CGEventType, buttonNumber: Int64) -
     }
 
     @Test func sequenceBindingsShareLeaderRootRegistration() {
-        let leader = KeyBinding(keyCode: UInt32(kVK_Space), modifiers: KeySymbolMapper.hyperModifiers)
+        let leader = KeyBinding(keyCode: UInt32(kVK_Space), modifiers: KeySymbolMapper.realHyperModifiers)
         let focusLeft = HotkeyTrigger.sequence([
             .leader,
             .chord(KeyBinding(keyCode: UInt32(kVK_ANSI_H), modifiers: 0))
@@ -136,28 +136,9 @@ private func makeHotkeyOtherMouseEvent(type: CGEventType, buttonNumber: Int64) -
         #expect(plan.registrations.isEmpty)
     }
 
-    @Test func inputMonitoringDenialFailsOnlySequenceBindings() {
-        let direct = KeyBinding(keyCode: UInt32(kVK_ANSI_K), modifiers: UInt32(optionKey))
-        let sequence = HotkeyTrigger.sequence([
-            .leader,
-            .chord(KeyBinding(keyCode: UInt32(kVK_ANSI_H), modifiers: 0))
-        ])
-        let plan = HotkeyCenter.registrationPlan(
-            for: [
-                HotkeyBinding(id: "focus.up", command: .focus(.up), binding: direct),
-                HotkeyBinding(id: "focus.left", command: .focus(.left), trigger: sequence)
-            ],
-            sequenceEventAccessGranted: false
-        )
-
-        #expect(plan.registrations == [
-            HotkeyPlannedRegistration(binding: direct, command: .focus(.up))
-        ])
-    }
-
     @Test func systemSemanticHyperBindingsRegisterLiteralCompatibilityOnly() {
         let semantic = KeyBinding(keyCode: UInt32(kVK_ANSI_2), modifiers: 0, usesModifier: true)
-        let literal = KeyBinding(keyCode: UInt32(kVK_ANSI_2), modifiers: KeySymbolMapper.hyperModifiers)
+        let literal = KeyBinding(keyCode: UInt32(kVK_ANSI_2), modifiers: KeySymbolMapper.realHyperModifiers)
         let plan = HotkeyCenter.registrationPlan(
             for: [
                 HotkeyBinding(id: "switchWorkspace.1", command: .switchWorkspace(1), binding: semantic)
@@ -320,7 +301,7 @@ private func makeHotkeyOtherMouseEvent(type: CGEventType, buttonNumber: Int64) -
 
     @Test func semanticHyperConflictsWithLiteralAllModifierCompatibilityChord() {
         let semantic = KeyBinding(keyCode: UInt32(kVK_ANSI_2), modifiers: 0, usesModifier: true)
-        let literal = KeyBinding(keyCode: UInt32(kVK_ANSI_2), modifiers: KeySymbolMapper.hyperModifiers)
+        let literal = KeyBinding(keyCode: UInt32(kVK_ANSI_2), modifiers: KeySymbolMapper.realHyperModifiers)
         let plan = HotkeyCenter.registrationPlan(
             for: [
                 HotkeyBinding(id: "switchWorkspace.1", command: .switchWorkspace(1), binding: semantic),
@@ -338,7 +319,7 @@ private func makeHotkeyOtherMouseEvent(type: CGEventType, buttonNumber: Int64) -
     }
 
     @Test func literalAllModifierChordConflictsWithSemanticLeaderRoot() {
-        let literalLeader = KeyBinding(keyCode: UInt32(kVK_Space), modifiers: KeySymbolMapper.hyperModifiers)
+        let literalLeader = KeyBinding(keyCode: UInt32(kVK_Space), modifiers: KeySymbolMapper.realHyperModifiers)
         let sequence = HotkeyTrigger.sequence([
             .leader,
             .chord(KeyBinding(keyCode: UInt32(kVK_ANSI_H), modifiers: 0))
@@ -626,87 +607,6 @@ private func makeHotkeyOtherMouseEvent(type: CGEventType, buttonNumber: Int64) -
         #expect(initialDecision == .passThrough)
         #expect(repeatDecision == .passThrough)
         #expect(!state.consumedKeyCodes.contains(UInt32(kVK_ANSI_S)))
-    }
-
-    @Test @MainActor func virtualHyperKeyDownPathStripsTriggerModifierAndSuppressesRepeat() {
-        let center = HotkeyCenter()
-        var commands: [HotkeyCommand] = []
-        let action = HotkeyRegistrationAction.command(.focus(.left))
-        center.onCommand = { commands.append($0) }
-        center.prepareVirtualHyperForTesting(
-            modifierTrigger: .key(UInt32(kVK_Shift)),
-            registrations: [
-                KeyBinding(keyCode: UInt32(kVK_ANSI_S), modifiers: 0, usesModifier: true): action
-            ],
-            isActive: true
-        )
-
-        let initialEvent = makeHotkeyKeyboardEvent(keyCode: UInt32(kVK_ANSI_S), flags: .maskShift)
-        let initialResult = center.handleVirtualHyperEventForTesting(type: .keyDown, event: initialEvent)
-        #expect(initialResult == nil)
-        #expect(commands.isEmpty)
-        center.drainPendingSequenceCommandsForTesting()
-        #expect(commands == [.focus(.left)])
-
-        let repeatEvent = makeHotkeyKeyboardEvent(
-            keyCode: UInt32(kVK_ANSI_S),
-            flags: .maskShift,
-            autorepeat: true
-        )
-        let repeatResult = center.handleVirtualHyperEventForTesting(type: .keyDown, event: repeatEvent)
-        #expect(repeatResult == nil)
-        center.drainPendingSequenceCommandsForTesting()
-        #expect(commands == [.focus(.left)])
-    }
-
-    @Test @MainActor func virtualHyperKeyDownPathPassesThroughDuringActiveSequence() {
-        let center = HotkeyCenter()
-        var commands: [HotkeyCommand] = []
-        let action = HotkeyRegistrationAction.command(.focus(.left))
-        center.onCommand = { commands.append($0) }
-        center.prepareVirtualHyperForTesting(
-            modifierTrigger: .key(UInt32(kVK_Shift)),
-            registrations: [
-                KeyBinding(keyCode: UInt32(kVK_ANSI_S), modifiers: 0, usesModifier: true): action
-            ],
-            isActive: true,
-            sequenceIsActive: true
-        )
-
-        let event = makeHotkeyKeyboardEvent(keyCode: UInt32(kVK_ANSI_S), flags: .maskShift)
-        let result = center.handleVirtualHyperEventForTesting(type: .keyDown, event: event)
-        #expect(result != nil)
-        center.drainPendingSequenceCommandsForTesting()
-        #expect(commands.isEmpty)
-    }
-
-    @Test @MainActor func mouseButtonVirtualHyperCenterPathDispatchesAndSuppressesRegisteredKey() {
-        let center = HotkeyCenter()
-        var commands: [HotkeyCommand] = []
-        let action = HotkeyRegistrationAction.command(.focus(.left))
-        center.onCommand = { commands.append($0) }
-        center.prepareVirtualHyperForTesting(
-            modifierTrigger: .mouseButton(4),
-            registrations: [
-                KeyBinding(keyCode: UInt32(kVK_ANSI_S), modifiers: 0, usesModifier: true): action
-            ]
-        )
-
-        let triggerDown = makeHotkeyOtherMouseEvent(type: .otherMouseDown, buttonNumber: 4)
-        #expect(center.handleVirtualHyperEventForTesting(type: .otherMouseDown, event: triggerDown) == nil)
-
-        let initialEvent = makeHotkeyKeyboardEvent(keyCode: UInt32(kVK_ANSI_S))
-        #expect(center.handleVirtualHyperEventForTesting(type: .keyDown, event: initialEvent) == nil)
-        center.drainPendingSequenceCommandsForTesting()
-        #expect(commands == [.focus(.left)])
-
-        let repeatEvent = makeHotkeyKeyboardEvent(keyCode: UInt32(kVK_ANSI_S), autorepeat: true)
-        #expect(center.handleVirtualHyperEventForTesting(type: .keyDown, event: repeatEvent) == nil)
-        center.drainPendingSequenceCommandsForTesting()
-        #expect(commands == [.focus(.left)])
-
-        let triggerUp = makeHotkeyOtherMouseEvent(type: .otherMouseUp, buttonNumber: 4)
-        #expect(center.handleVirtualHyperEventForTesting(type: .otherMouseUp, event: triggerUp) == nil)
     }
 
     @Test @MainActor func sequenceTapUnavailableFailsSequenceCommands() {

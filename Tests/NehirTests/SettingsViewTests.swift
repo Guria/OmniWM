@@ -4,7 +4,7 @@ import Testing
 
 private func makeSettingsWorkflowTestDirectory() -> URL {
     let directory = FileManager.default.temporaryDirectory
-        .appendingPathComponent("omniwm-settings-workflow-tests", isDirectory: true)
+        .appendingPathComponent("nehir-settings-workflow-tests", isDirectory: true)
         .appendingPathComponent(UUID().uuidString, isDirectory: true)
     try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     return directory

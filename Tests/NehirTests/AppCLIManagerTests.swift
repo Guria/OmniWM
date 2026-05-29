@@ -4,7 +4,7 @@ import Testing
 
 private func makeAppCLIManagerTestDirectory() -> URL {
     let directory = FileManager.default.temporaryDirectory
-        .appendingPathComponent("omniwm-cli-manager-tests", isDirectory: true)
+        .appendingPathComponent("nehir-cli-manager-tests", isDirectory: true)
         .appendingPathComponent(UUID().uuidString, isDirectory: true)
     try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     return directory

@@ -9,7 +9,7 @@ private let ipcServerTestSessionToken = "ipc-server-tests"
 
 private func makeIPCTestSocketPath() -> String {
     FileManager.default.temporaryDirectory
-        .appendingPathComponent("omniwm-ipc-\(UUID().uuidString).sock")
+        .appendingPathComponent("nehir-ipc-\(UUID().uuidString).sock")
         .path
 }
 

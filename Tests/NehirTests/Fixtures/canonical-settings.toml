@@ -1,5 +1,4 @@
 monitorBarOverrides = []
-monitorDwindleOverrides = []
 monitorNiriOverrides = []
 monitorOrientationOverrides = []
 
@@ -22,14 +21,6 @@ maxItemBytes = 8388608
 maxItems = 200
 maxTotalBytes = 67108864
 
-[dwindle]
-defaultSplitRatio = 1.0
-moveToRootStable = true
-singleWindowAspectRatio = "4:3"
-smartSplit = false
-splitWidthMultiplier = 1.0
-useGlobalGaps = true
-
 [focus]
 followsMouse = false
 followsWindowToMonitor = false
@@ -48,9 +39,9 @@ top = 0.0
 animationsEnabled = true
 defaultLayoutType = "niri"
 hotkeysEnabled = true
-hyperTrigger = "Option"
 ipcEnabled = false
-leaderKey = "Hyper+Space"
+leaderKey = "Modifier+Space"
+modifierTrigger = "Option+Command"
 preventSleepEnabled = false
 sequenceTimeoutMilliseconds = 800
 updateChecksEnabled = true
@@ -187,79 +178,79 @@ minHeight = 320.0
 minWidth = 660.0
 
 [[hotkeys]]
-binding = "Hyper+1"
+binding = "Modifier+1"
 id = "switchWorkspace.0"
 
 [[hotkeys]]
-binding = "Hyper+Shift+1"
+binding = "Modifier+Shift+1"
 id = "moveToWorkspace.0"
 
 [[hotkeys]]
-binding = "Hyper+2"
+binding = "Modifier+2"
 id = "switchWorkspace.1"
 
 [[hotkeys]]
-binding = "Hyper+Shift+2"
+binding = "Modifier+Shift+2"
 id = "moveToWorkspace.1"
 
 [[hotkeys]]
-binding = "Hyper+3"
+binding = "Modifier+3"
 id = "switchWorkspace.2"
 
 [[hotkeys]]
-binding = "Hyper+Shift+3"
+binding = "Modifier+Shift+3"
 id = "moveToWorkspace.2"
 
 [[hotkeys]]
-binding = "Hyper+4"
+binding = "Modifier+4"
 id = "switchWorkspace.3"
 
 [[hotkeys]]
-binding = "Hyper+Shift+4"
+binding = "Modifier+Shift+4"
 id = "moveToWorkspace.3"
 
 [[hotkeys]]
-binding = "Hyper+5"
+binding = "Modifier+5"
 id = "switchWorkspace.4"
 
 [[hotkeys]]
-binding = "Hyper+Shift+5"
+binding = "Modifier+Shift+5"
 id = "moveToWorkspace.4"
 
 [[hotkeys]]
-binding = "Hyper+6"
+binding = "Modifier+6"
 id = "switchWorkspace.5"
 
 [[hotkeys]]
-binding = "Hyper+Shift+6"
+binding = "Modifier+Shift+6"
 id = "moveToWorkspace.5"
 
 [[hotkeys]]
-binding = "Hyper+7"
+binding = "Modifier+7"
 id = "switchWorkspace.6"
 
 [[hotkeys]]
-binding = "Hyper+Shift+7"
+binding = "Modifier+Shift+7"
 id = "moveToWorkspace.6"
 
 [[hotkeys]]
-binding = "Hyper+8"
+binding = "Modifier+8"
 id = "switchWorkspace.7"
 
 [[hotkeys]]
-binding = "Hyper+Shift+8"
+binding = "Modifier+Shift+8"
 id = "moveToWorkspace.7"
 
 [[hotkeys]]
-binding = "Hyper+9"
+binding = "Modifier+9"
 id = "switchWorkspace.8"
 
 [[hotkeys]]
-binding = "Hyper+Shift+9"
+binding = "Modifier+Shift+9"
 id = "moveToWorkspace.8"
 
 [[hotkeys]]
-binding = "Hyper+Control+Tab"
+binding = "Modifier+Control+Tab"
 id = "workspaceBackAndForth"
 
 [[hotkeys]]
@@ -271,23 +262,23 @@ binding = "Unassigned"
 id = "switchWorkspace.previous"
 
 [[hotkeys]]
-binding = "Hyper+Left Arrow"
+binding = "Modifier+Left Arrow"
 id = "focus.left"
 
 [[hotkeys]]
-binding = "Hyper+Down Arrow"
+binding = "Modifier+Down Arrow"
 id = "focus.down"
 
 [[hotkeys]]
-binding = "Hyper+Up Arrow"
+binding = "Modifier+Up Arrow"
 id = "focus.up"
 
 [[hotkeys]]
-binding = "Hyper+Right Arrow"
+binding = "Modifier+Right Arrow"
 id = "focus.right"
 
 [[hotkeys]]
-binding = "Hyper+Tab"
+binding = "Modifier+Tab"
 id = "focusPrevious"
 
 [[hotkeys]]
@@ -331,19 +322,19 @@ binding = "Unassigned"
 id = "centerVisibleColumns"
 
 [[hotkeys]]
-binding = "Hyper+Control+Shift+Up Arrow"
+binding = "Modifier+Control+Shift+Up Arrow"
 id = "moveWindowToWorkspaceUp"
 
 [[hotkeys]]
-binding = "Hyper+Control+Shift+Down Arrow"
+binding = "Modifier+Control+Shift+Down Arrow"
 id = "moveWindowToWorkspaceDown"
 
 [[hotkeys]]
-binding = "Hyper+Control+Shift+Page Up"
+binding = "Modifier+Control+Shift+Page Up"
 id = "moveColumnToWorkspaceUp"
 
 [[hotkeys]]
-binding = "Hyper+Control+Shift+Page Down"
+binding = "Modifier+Control+Shift+Page Down"
 id = "moveColumnToWorkspaceDown"
 
 [[hotkeys]]
@@ -383,19 +374,19 @@ binding = "Unassigned"
 id = "moveColumnToWorkspace.8"
 
 [[hotkeys]]
-binding = "Hyper+Shift+Left Arrow"
+binding = "Modifier+Shift+Left Arrow"
 id = "move.left"
 
 [[hotkeys]]
-binding = "Hyper+Shift+Down Arrow"
+binding = "Modifier+Shift+Down Arrow"
 id = "move.down"
 
 [[hotkeys]]
-binding = "Hyper+Shift+Up Arrow"
+binding = "Modifier+Shift+Up Arrow"
 id = "move.up"
 
 [[hotkeys]]
-binding = "Hyper+Shift+Right Arrow"
+binding = "Modifier+Shift+Right Arrow"
 id = "move.right"
 
 [[hotkeys]]
@@ -443,7 +434,7 @@ binding = "Control+Command+Grave"
 id = "focusMonitorLast"
 
 [[hotkeys]]
-binding = "Hyper+Return"
+binding = "Modifier+Return"
 id = "toggleFullscreen"
 
 [[hotkeys]]
@@ -451,67 +442,67 @@ binding = "Unassigned"
 id = "toggleNativeFullscreen"
 
 [[hotkeys]]
-binding = "Hyper+Control+Shift+Left Arrow"
+binding = "Modifier+Control+Shift+Left Arrow"
 id = "moveColumn.left"
 
 [[hotkeys]]
-binding = "Hyper+Control+Shift+Right Arrow"
+binding = "Modifier+Control+Shift+Right Arrow"
 id = "moveColumn.right"
 
 [[hotkeys]]
-binding = "Hyper+Control+Home"
+binding = "Modifier+Control+Home"
 id = "moveColumnToFirst"
 
 [[hotkeys]]
-binding = "Hyper+Control+End"
+binding = "Modifier+Control+End"
 id = "moveColumnToLast"
 
 [[hotkeys]]
-binding = "Hyper+T"
+binding = "Modifier+T"
 id = "toggleColumnTabbed"
 
 [[hotkeys]]
-binding = "Hyper+Home"
+binding = "Modifier+Home"
 id = "focusColumnFirst"
 
 [[hotkeys]]
-binding = "Hyper+End"
+binding = "Modifier+End"
 id = "focusColumnLast"
 
 [[hotkeys]]
-binding = "Hyper+Control+1"
+binding = "Modifier+Control+1"
 id = "focusColumn.0"
 
 [[hotkeys]]
-binding = "Hyper+Control+2"
+binding = "Modifier+Control+2"
 id = "focusColumn.1"
 
 [[hotkeys]]
-binding = "Hyper+Control+3"
+binding = "Modifier+Control+3"
 id = "focusColumn.2"
 
 [[hotkeys]]
-binding = "Hyper+Control+4"
+binding = "Modifier+Control+4"
 id = "focusColumn.3"
 
 [[hotkeys]]
-binding = "Hyper+Control+5"
+binding = "Modifier+Control+5"
 id = "focusColumn.4"
 
 [[hotkeys]]
-binding = "Hyper+Control+6"
+binding = "Modifier+Control+6"
 id = "focusColumn.5"
 
 [[hotkeys]]
-binding = "Hyper+Control+7"
+binding = "Modifier+Control+7"
 id = "focusColumn.6"
 
 [[hotkeys]]
-binding = "Hyper+Control+8"
+binding = "Modifier+Control+8"
 id = "focusColumn.7"
 
 [[hotkeys]]
-binding = "Hyper+Control+9"
+binding = "Modifier+Control+9"
 id = "focusColumn.8"
 
 [[hotkeys]]
@@ -587,11 +578,11 @@ binding = "Unassigned"
 id = "moveColumnToIndex.9"
 
 [[hotkeys]]
-binding = "Hyper+Period"
+binding = "Modifier+Period"
 id = "cycleColumnWidthForward"
 
 [[hotkeys]]
-binding = "Hyper+Comma"
+binding = "Modifier+Comma"
 id = "cycleColumnWidthBackward"
 
 [[hotkeys]]
@@ -611,23 +602,23 @@ binding = "Unassigned"
 id = "cycleWindowHeightBackward"
 
 [[hotkeys]]
-binding = "Hyper+Shift+F"
+binding = "Modifier+Shift+F"
 id = "toggleColumnFullWidth"
 
 [[hotkeys]]
-binding = "Hyper+Control+F"
+binding = "Modifier+Control+F"
 id = "expandColumnToAvailableWidth"
 
 [[hotkeys]]
-binding = "Hyper+Control+R"
+binding = "Modifier+Control+R"
 id = "resetWindowHeight"
 
 [[hotkeys]]
-binding = "Hyper+Minus"
+binding = "Modifier+Minus"
 id = "setColumnWidth.decrease10Percent"
 
 [[hotkeys]]
-binding = "Hyper+Equal"
+binding = "Modifier+Equal"
 id = "setColumnWidth.increase10Percent"
 
 [[hotkeys]]
@@ -639,87 +630,23 @@ binding = "Unassigned"
 id = "setWindowWidth.increase10Percent"
 
 [[hotkeys]]
-binding = "Hyper+Shift+Minus"
+binding = "Modifier+Shift+Minus"
 id = "setWindowHeight.decrease10Percent"
 
 [[hotkeys]]
-binding = "Hyper+Shift+Equal"
+binding = "Modifier+Shift+Equal"
 id = "setWindowHeight.increase10Percent"
 
 [[hotkeys]]
-binding = "Hyper+Shift+B"
+binding = "Modifier+Shift+B"
 id = "balanceSizes"
 
 [[hotkeys]]
-binding = "Unassigned"
-id = "moveToRoot"
-
-[[hotkeys]]
-binding = "Unassigned"
-id = "toggleSplit"
-
-[[hotkeys]]
-binding = "Unassigned"
-id = "swapSplit"
-
-[[hotkeys]]
-binding = "Unassigned"
-id = "resizeGrow.left"
-
-[[hotkeys]]
-binding = "Unassigned"
-id = "resizeGrow.right"
-
-[[hotkeys]]
-binding = "Unassigned"
-id = "resizeGrow.up"
-
-[[hotkeys]]
-binding = "Unassigned"
-id = "resizeGrow.down"
-
-[[hotkeys]]
-binding = "Unassigned"
-id = "resizeShrink.left"
-
-[[hotkeys]]
-binding = "Unassigned"
-id = "resizeShrink.right"
-
-[[hotkeys]]
-binding = "Unassigned"
-id = "resizeShrink.up"
-
-[[hotkeys]]
-binding = "Unassigned"
-id = "resizeShrink.down"
-
-[[hotkeys]]
-binding = "Unassigned"
-id = "preselect.left"
-
-[[hotkeys]]
-binding = "Unassigned"
-id = "preselect.right"
-
-[[hotkeys]]
-binding = "Unassigned"
-id = "preselect.up"
-
-[[hotkeys]]
-binding = "Unassigned"
-id = "preselect.down"
-
-[[hotkeys]]
-binding = "Unassigned"
-id = "preselectClear"
-
-[[hotkeys]]
-binding = "Hyper+Control+Space"
+binding = "Modifier+Control+Space"
 id = "openCommandPalette"
 
 [[hotkeys]]
-binding = "Hyper+Shift+R"
+binding = "Modifier+Shift+R"
 id = "raiseAllFloatingWindows"
 
 [[hotkeys]]
@@ -739,7 +666,7 @@ binding = "Unassigned"
 id = "toggleScratchpadWindow"
 
 [[hotkeys]]
-binding = "Hyper+Control+M"
+binding = "Modifier+Control+M"
 id = "openMenuAnywhere"
 
 [[hotkeys]]
@@ -751,15 +678,11 @@ binding = "Unassigned"
 id = "toggleHiddenBar"
 
 [[hotkeys]]
-binding = "Hyper+Grave"
+binding = "Modifier+Grave"
 id = "toggleQuakeTerminal"
 
 [[hotkeys]]
-binding = "Hyper+Shift+L"
-id = "toggleWorkspaceLayout"
-
-[[hotkeys]]
-binding = "Hyper+Shift+O"
+binding = "Modifier+Shift+O"
 id = "toggleOverview"
 
 [[workspaces]]

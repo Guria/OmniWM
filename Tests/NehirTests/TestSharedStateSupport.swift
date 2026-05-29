@@ -86,8 +86,8 @@ func withCGSEventObserverIsolationForTests<T>(
     }
 }
 
-private let testConfigurationDirectoryKey = "__omniwm.test.configurationDirectory"
-private let testRuntimeStateDirectoryKey = "__omniwm.test.runtimeStateDirectory"
+private let testConfigurationDirectoryKey = "__nehir.test.configurationDirectory"
+private let testRuntimeStateDirectoryKey = "__nehir.test.runtimeStateDirectory"
 
 func configurationDirectoryForTests(defaults: UserDefaults) -> URL {
     if let path = defaults.string(forKey: testConfigurationDirectoryKey) {
@@ -95,7 +95,7 @@ func configurationDirectoryForTests(defaults: UserDefaults) -> URL {
     }
 
     let directory = FileManager.default.temporaryDirectory
-        .appendingPathComponent("omniwm-config-tests", isDirectory: true)
+        .appendingPathComponent("nehir-config-tests", isDirectory: true)
         .appendingPathComponent(UUID().uuidString, isDirectory: true)
     try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     defaults.set(directory.path, forKey: testConfigurationDirectoryKey)
@@ -108,7 +108,7 @@ func runtimeStateDirectoryForTests(defaults: UserDefaults) -> URL {
     }
 
     let directory = FileManager.default.temporaryDirectory
-        .appendingPathComponent("omniwm-state-tests", isDirectory: true)
+        .appendingPathComponent("nehir-state-tests", isDirectory: true)
         .appendingPathComponent(UUID().uuidString, isDirectory: true)
     try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     defaults.set(directory.path, forKey: testRuntimeStateDirectoryKey)
@@ -163,8 +163,6 @@ func resetSharedControllerStateForTests() {
 
     SettingsWindowController.shared.windowForTests?.close()
     AppRulesWindowController.shared.windowForTests?.close()
-    SponsorsWindowController.shared.windowForTests?.close()
-    UpdateWindowController.shared.windowForTests?.close()
     OwnedWindowRegistry.shared.resetForTests()
     NativeFullscreenPlaceholderManager.materializesWindowsForTests = false
     ResizePlaceholderManager.materializesWindowsForTests = false

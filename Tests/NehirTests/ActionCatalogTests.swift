@@ -29,20 +29,6 @@ import Testing
         )
     }
 
-    @Test func hotkeyVisibilitySeparatesNormalAdvancedAndHiddenActions() throws {
-        let normal = try #require(ActionCatalog.spec(for: "move.left"))
-        let advanced = try #require(ActionCatalog.spec(for: "moveWindowDownOrToWorkspaceDown"))
-        let hidden = try #require(ActionCatalog.spec(for: "consumeOrExpelWindowLeft"))
-
-        #expect(normal.visibility == .normal)
-        #expect(advanced.visibility == .advanced)
-        #expect(hidden.visibility == .hidden)
-        #expect(ActionCatalog.visibility(for: "moveWindowUp") == .hidden)
-        #expect(ActionCatalog.visibility(for: "focusWindowInColumn.1") == .advanced)
-        #expect(ActionCatalog.visibility(for: "resizeGrow.left") == .advanced)
-        #expect(ActionCatalog.visibility(for: "centerColumn") == .advanced)
-    }
-
     @Test func previousWorkspaceActionsHaveDistinctDisplayNames() throws {
         let previous = try #require(ActionCatalog.spec(for: "switchWorkspace.previous"))
         let lastActive = try #require(ActionCatalog.spec(for: "workspaceBackAndForth"))

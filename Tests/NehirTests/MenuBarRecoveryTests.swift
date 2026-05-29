@@ -314,7 +314,7 @@ private func makeMonitorForBarTests(hasNotch: Bool) -> Monitor {
         let mainVisibilityKeys = visibilityKeys(for: mainName)
         let thirdPartyPositionKey = preferredPositionKey(for: "third_party")
         let thirdPartyVisibilityKey = visibilityKeys(for: "third_party")[0]
-        let unrelatedKey = "omniwm.status.integration.unrelated"
+        let unrelatedKey = "nehir.status.integration.unrelated"
         let capturedDefaults = capturedDefaultValues(for: ownedStatusDefaultKeys())
         let controller = makeLayoutPlanTestController()
         controller.settings.hiddenBarIsCollapsed = false

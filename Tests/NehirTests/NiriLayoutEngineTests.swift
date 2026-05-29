@@ -3628,7 +3628,7 @@ private func makeCenteredCrossMonitorFixture(
         fixture.controller.appInfoCache.storeInfoForTests(
             pid: getpid(),
             name: "Nehir Tests",
-            bundleId: "com.example.omniwm-tests"
+            bundleId: "com.example.nehir-tests"
         )
         for (token, title) in [
             (fixture.bottomToken, "Bottom"),
@@ -3637,7 +3637,7 @@ private func makeCenteredCrossMonitorFixture(
         ] {
             _ = fixture.controller.workspaceManager.setManagedReplacementMetadata(
                 ManagedReplacementMetadata(
-                    bundleId: "com.example.omniwm-tests",
+                    bundleId: "com.example.nehir-tests",
                     workspaceId: fixture.workspaceId,
                     mode: .tiling,
                     role: nil,
@@ -3662,7 +3662,7 @@ private func makeCenteredCrossMonitorFixture(
         #expect(infos.first?.tabCount == 3)
         #expect(infos.first?.activeVisualIndex == fixture.column.activeVisualTileIdx)
         #expect(infos.first?.tabs.map(\.windowId) == [903, 902, 901])
-        #expect(infos.first?.tabs.map(\.appName) == ["OmniWM Tests", "OmniWM Tests", "OmniWM Tests"])
+        #expect(infos.first?.tabs.map(\.appName) == ["Nehir Tests", "Nehir Tests", "Nehir Tests"])
         #expect(infos.first?.tabs.map(\.title) == ["Top", "Middle", "Bottom"])
         #expect(infos.first?.tabs.map(\.isActive) == [false, true, false])
     }

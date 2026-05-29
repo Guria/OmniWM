@@ -220,6 +220,24 @@ enum ModifierKeyTrigger: Equatable, Hashable {
             return .modifier(modifier)
         }
 
+        // Handle combined modifiers like "Option+Command"
+        if trimmed.contains("+") {
+            let parts = trimmed.split(separator: "+").map { String($0).trimmingCharacters(in: .whitespaces) }
+            var combined: UInt32 = 0
+            var allValid = true
+            for part in parts {
+                if let mask = Self.modifierMask(named: part) {
+                    combined |= mask
+                } else {
+                    allValid = false
+                    break
+                }
+            }
+            if allValid && combined != 0 {
+                return .modifier(combined)
+            }
+        }
+
         if let keyCode = KeySymbolMapper.keyCode(named: trimmed) {
             return .key(keyCode)
         }

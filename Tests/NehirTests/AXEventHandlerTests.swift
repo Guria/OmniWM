@@ -1990,7 +1990,7 @@ private func waitUntilAXEventTest(
             AXWindowRef(element: AXUIElementCreateSystemWide(), windowId: Int(windowId))
         }
         controller.axEventHandler.windowFactsProvider = { _, _ in
-            makeAXEventWindowRuleFacts(bundleId: Bundle.main.bundleIdentifier ?? "com.example.omniwm")
+            makeAXEventWindowRuleFacts(bundleId: Bundle.main.bundleIdentifier ?? "com.example.nehir")
         }
         controller.axEventHandler.windowSubscriptionHandler = { windowIds in
             subscriptions.append(windowIds)
@@ -3300,7 +3300,7 @@ private func waitUntilAXEventTest(
             return AXWindowRef(element: AXUIElementCreateSystemWide(), windowId: Int(candidateWindowId))
         }
         controller.axEventHandler.windowFactsProvider = { _, _ in
-            makeAXEventWindowRuleFacts(bundleId: Bundle.main.bundleIdentifier ?? "com.example.omniwm")
+            makeAXEventWindowRuleFacts(bundleId: Bundle.main.bundleIdentifier ?? "com.example.nehir")
         }
         controller.axEventHandler.windowSubscriptionHandler = { windowIds in
             subscriptions.append(windowIds)

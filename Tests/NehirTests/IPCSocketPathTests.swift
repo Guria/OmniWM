@@ -4,7 +4,7 @@ import Testing
 
 @Suite struct IPCSocketPathTests {
     @Test func environmentOverrideWins() {
-        let path = "/tmp/omniwm-custom.sock"
+        let path = "/tmp/nehir-custom.sock"
 
         #expect(IPCSocketPath.resolvedPath(environment: [IPCSocketPath.environmentKey: path]) == path)
     }
@@ -17,7 +17,7 @@ import Testing
 
     @Test func secretPathLivesBesideSocketPath() {
         #expect(
-            IPCSocketPath.secretPath(forSocketPath: "/tmp/omniwm.sock") == "/tmp/omniwm.sock.secret"
+            IPCSocketPath.secretPath(forSocketPath: "/tmp/nehir.sock") == "/tmp/nehir.sock.secret"
         )
     }
 }

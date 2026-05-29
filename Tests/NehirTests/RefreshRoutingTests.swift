@@ -1176,20 +1176,6 @@ private func syncNiriWorkspaceStatesForRefreshTests(
         assertNoLegacyReasons(recorder)
     }
 
-    @Test @MainActor func workspaceLayoutToggleUsesRelayoutOnly() async {
-        let controller = makeRefreshTestController()
-        let recorder = RefreshEventRecorder()
-        installRefreshSpies(on: controller, recorder: recorder)
-
-        controller.commandHandler.handleCommand(.toggleWorkspaceLayout)
-        await waitForRefreshWork(on: controller)
-
-        #expect(recorder.relayoutEvents.map(\.0) == [.workspaceLayoutToggled])
-        #expect(recorder.relayoutEvents.map(\.1) == [.relayout])
-        #expect(recorder.fullRescanReasons.isEmpty)
-        assertNoLegacyReasons(recorder)
-    }
-
     @Test @MainActor func workspaceTransitionFlowsUseImmediateRelayoutOnly() async {
         let controller = makeRefreshTestController()
         _ = controller.workspaceManager.workspaceId(for: "2", createIfMissing: true)

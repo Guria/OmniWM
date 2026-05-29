@@ -214,17 +214,6 @@ private func sampleRuleOptionValue(for flag: String) -> String {
         #expect(expelFromCommand == .expelWindowFromColumn)
     }
 
-    @Test func parsesResizeCommand() throws {
-        let parsed = try CLIParser.parse(arguments: ["nehirctl", "command", "resize", "left", "grow"])
-
-        guard case let .command(command) = parsed.request.payload else {
-            Issue.record("Expected a command payload")
-            return
-        }
-
-        #expect(command == .resize(direction: .left, operation: .grow))
-    }
-
     @Test func parsesNiriSizeChangeCommands() throws {
         let column = try CLIParser.parse(arguments: ["nehirctl", "command", "set-column-width", "+10%"])
         let height = try CLIParser.parse(arguments: ["nehirctl", "command", "set-window-height", "600"])

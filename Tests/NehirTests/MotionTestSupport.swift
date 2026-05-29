@@ -3,18 +3,6 @@ import Foundation
 import QuartzCore
 @testable import Nehir
 
-@MainActor
-private enum SponsorsWindowControllerTestSharedState {
-    static let controller = SponsorsWindowController(motionPolicy: MotionPolicy())
-}
-
-extension SponsorsWindowController {
-    @MainActor
-    static var shared: SponsorsWindowController {
-        SponsorsWindowControllerTestSharedState.controller
-    }
-}
-
 extension CommandPaletteController {
     convenience init(environment: CommandPaletteEnvironment = .init()) {
         self.init(motionPolicy: MotionPolicy(), environment: environment)

@@ -66,7 +66,7 @@ private final class ClipboardHistoryTestTimer: ClipboardHistoryTimer {
 
 private func makeClipboardHistoryTestDirectory() -> URL {
     FileManager.default.temporaryDirectory
-        .appendingPathComponent("omniwm-clipboard-tests", isDirectory: true)
+        .appendingPathComponent("nehir-clipboard-tests", isDirectory: true)
         .appendingPathComponent(UUID().uuidString, isDirectory: true)
 }
 

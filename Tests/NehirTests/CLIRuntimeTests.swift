@@ -55,7 +55,7 @@ private actor WatchEventRecorder {
 
 private func makeCLITestSocketPath() -> String {
     FileManager.default.temporaryDirectory
-        .appendingPathComponent("omniwm-cli-\(UUID().uuidString).sock")
+        .appendingPathComponent("nehir-cli-\(UUID().uuidString).sock")
         .path
 }
 
@@ -237,7 +237,7 @@ private func waitForRecordedEvents(
         try server.start()
 
         let tempDirectory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("omniwm-watch-\(UUID().uuidString)", isDirectory: true)
+            .appendingPathComponent("nehir-watch-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDirectory) }
 

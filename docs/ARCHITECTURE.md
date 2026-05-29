@@ -1,10 +1,10 @@
 ---
-title: OmniWM Architecture Guide
+title: Nehir Architecture Guide
 ---
 
-# OmniWM Architecture Guide
+# Nehir Architecture Guide
 
-This document is for contributors who want to understand OmniWM's internals. It is not a user guide (see [Documentation Home](index.md)) or IPC/CLI reference (see [IPC-CLI.md](IPC-CLI.md)). For contribution process, see the [Contribution Guide](CONTRIBUTING.md).
+This document is for contributors who want to understand Nehir's internals. It is not a user guide (see [Documentation Home](index.md)) or IPC/CLI reference (see [IPC-CLI.md](IPC-CLI.md)). For contribution process, see the [Contribution Guide](CONTRIBUTING.md).
 
 **Prerequisites**: Familiarity with Swift, macOS development concepts (AppKit, AXUIElement, CGWindowID), and basic tiling window manager concepts.
 
@@ -25,7 +25,6 @@ This document is for contributors who want to understand OmniWM's internals. It 
   - [4.1 WMController — The Orchestrator](#41-wmcontroller--the-orchestrator)
   - [4.2 Workspace & Window State](#42-workspace--window-state)
   - [4.3 Niri Layout Engine (Scrolling Columns)](#43-niri-layout-engine-scrolling-columns)
-  - [4.4 Dwindle Layout Engine (BSP)](#44-dwindle-layout-engine-bsp)
   - [4.5 Focus Lifecycle](#45-focus-lifecycle)
   - [4.6 Input Handling](#46-input-handling)
   - [4.7 Window Rules Engine](#47-window-rules-engine)
@@ -45,30 +44,30 @@ This document is for contributors who want to understand OmniWM's internals. It 
 
 ### SwiftPM Targets
 
-OmniWM is built with Swift Package Manager (Swift 6.3.2, strict concurrency). There are four targets with a clear dependency graph:
+Nehir is built with Swift Package Manager (Swift 6.3.2, strict concurrency). There are four targets with a clear dependency graph:
 
 ```
-OmniWMIPC          (zero dependencies — shared IPC protocol models)
+NehirIPC          (zero dependencies — shared IPC protocol models)
     ^         ^
     |          \
-OmniWMCtl      OmniWM + GhosttyKit   (CLI tool)       (main library)
+NehirCtl      Nehir + GhosttyKit   (CLI tool)       (main library)
                    ^
                    |
-               OmniWMApp              (@main entry point)
+               NehirApp              (@main entry point)
 ```
 
 | Target | Purpose | Dependencies |
 |--------|---------|--------------|
-| `OmniWMIPC` | Shared IPC data models and wire format | None |
-| `OmniWMCtl` | CLI tool (`omniwmctl`) | OmniWMIPC |
-| `OmniWM` | Core window manager library | OmniWMIPC, GhosttyKit, system frameworks |
-| `OmniWMApp` | Executable wrapper with SwiftUI scene | OmniWM |
+| `NehirIPC` | Shared IPC data models and wire format | None |
+| `NehirCtl` | CLI tool (`nehirctl`) | NehirIPC |
+| `Nehir` | Core window manager library | NehirIPC, GhosttyKit, system frameworks |
+| `NehirApp` | Executable wrapper with SwiftUI scene | Nehir |
 
 ### Source Directory Map
 
 ```
 Sources/
-├── OmniWM/                          Main library (~38K LOC)
+├── Nehir/                          Main library (~38K LOC)
 │   ├── App/                         Application bootstrap, delegate, updater,
 │   │                                and owned-window registry (5 files)
 │   ├── Core/
@@ -87,7 +86,6 @@ Sources/
 │   │   │   ├── LayoutBoundary.swift Layout snapshots & workspace geometry
 │   │   │   ├── SideHiding.swift     Side-hiding edge types
 │   │   │   ├── Niri/                Scrolling columns layout engine (28 files)
-│   │   │   └── Dwindle/             Binary space partition layout engine (5 files)
 │   │   ├── LockScreen/              Lock screen detection (1 file)
 │   │   ├── Menu/                    Menu extraction for MenuAnywhere (3 files)
 │   │   ├── Monitor/                 Display detection, OutputId, restore assignments (5 files)
@@ -107,14 +105,14 @@ Sources/
 │   └── UI/                          SwiftUI settings, status bar, workspace bar,
 │                                    command palette, hidden bar, updater popup
 │                                    (34 files)
-├── OmniWMApp/                       2 files: @main entry + settings redirect
-├── OmniWMCtl/                       7 files: CLI parser, IPC client, renderer
-└── OmniWMIPC/                       5 files: models, wire format, socket path
+├── NehirApp/                       2 files: @main entry + settings redirect
+├── NehirCtl/                       7 files: CLI parser, IPC client, renderer
+└── NehirIPC/                       5 files: models, wire format, socket path
 ```
 
 ### External Dependencies
 
-OmniWM has **zero third-party package dependencies**. All functionality is built on:
+Nehir has **zero third-party package dependencies**. All functionality is built on:
 
 - **System frameworks**: AppKit, ApplicationServices, Carbon, Metal, MetalKit, QuartzCore
 - **SkyLight**: A private Apple framework for low-latency window server access, linked via `-framework SkyLight` unsafe flag
@@ -147,10 +145,10 @@ make check         # Verify formatting, lint, audit, build, and test
 
 ### Entry Point
 
-The application starts in `Sources/OmniWMApp/OmniWMApp.swift`:
+The application starts in `Sources/NehirApp/NehirApp.swift`:
 
 ```
-@main OmniWMApp (SwiftUI App)
+@main NehirApp (SwiftUI App)
   └─ @NSApplicationDelegateAdaptor → AppDelegate
        └─ applicationDidFinishLaunching()
             └─ bootstrapApplication()
@@ -221,7 +219,7 @@ The updater is intentionally bootstrap-gated. Release polling and popup presenta
 
 ### 3.1 The Event-Driven Pipeline
 
-OmniWM is fundamentally **reactive**. It responds to two categories of events, processes them through a pipeline, and applies the resulting window frames:
+Nehir is fundamentally **reactive**. It responds to two categories of events, processes them through a pipeline, and applies the resulting window frames:
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
@@ -232,7 +230,7 @@ OmniWM is fundamentally **reactive**. It responds to two categories of events, p
 │  - Window created        │  - Hotkey pressed                    │
 │  - Window destroyed      │  - Mouse moved/dragged              │
 │  - Frame changed         │  - Scroll wheel (gestures)          │
-│  - Front app changed     │  - IPC command (omniwmctl)          │
+│  - Front app changed     │  - IPC command (nehirctl)          │
 │  - Title changed         │                                     │
 └──────────┬───────────────┴──────────┬───────────────────────────┘
            │                          │
@@ -261,7 +259,6 @@ OmniWM is fundamentally **reactive**. It responds to two categories of events, p
                      v
          ┌───────────────────────┐
          │ Layout Engine         │
-         │ (Niri or Dwindle)     │
          │                       │
          │ Input: window list,   │
          │   workspace geometry  │
@@ -372,7 +369,7 @@ RefreshReason              → Route              → Scheduling
 
 Both layout engines follow the same contract:
 
-1. They own their own **tree data structures** (columns/windows for Niri, BSP nodes for Dwindle)
+1. They own their own **tree data structures** (columns/windows for Niri)
 2. They receive workspace geometry and gap configuration as input
 3. They produce a `[WindowToken: CGRect]` frame dictionary as output
 4. They **never touch windows directly** — no accessibility calls, no frame writes
@@ -381,7 +378,7 @@ This separation means layout logic can be unit-tested without any macOS UI or ac
 
 ### 3.6 Thread Safety Model
 
-**`@MainActor` everywhere.** Nearly all code in OmniWM runs on the main thread, including:
+**`@MainActor` everywhere.** Nearly all code in Nehir runs on the main thread, including:
 - All UI code (AppKit, SwiftUI)
 - All accessibility API calls
 - All layout computation
@@ -398,7 +395,7 @@ This separation means layout logic can be unit-tested without any macOS UI or ac
 
 ### 4.1 WMController — The Orchestrator
 
-**File:** `Sources/OmniWM/Core/Controller/WMController.swift`
+**File:** `Sources/Nehir/Core/Controller/WMController.swift`
 
 `WMController` is the central object that owns or references every major subsystem. It does NOT contain business logic itself — it delegates to specialized handlers.
 
@@ -429,12 +426,11 @@ This separation means layout logic can be unit-tested without any macOS UI or ac
 | `hotkeys: HotkeyCenter` | Global hotkey registration via Carbon |
 | `borderManager: BorderManager` | Focus border window management |
 | `niriEngine: NiriLayoutEngine?` | Niri layout state (nil if not in use) |
-| `dwindleEngine: DwindleLayoutEngine?` | Dwindle layout state (nil if not in use) |
 | `animationClock: AnimationClock` | Monotonic time source for animations |
 
 ### 4.2 Workspace & Window State
 
-**WorkspaceManager** (`Sources/OmniWM/Core/Workspace/WorkspaceManager.swift`)
+**WorkspaceManager** (`Sources/Nehir/Core/Workspace/WorkspaceManager.swift`)
 
 Owns workspace definitions, the window model, session state, monitor tracking, and the reconcile runtime used for debugging and relaunch restore behavior.
 
@@ -466,7 +462,7 @@ WorkspaceManager
 
 Post-`v0.4.5`, `WorkspaceManager` also owns the reconcile runtime. `RuntimeStore` and `ReconcileTraceRecorder` capture normalized window-management events into a replayable snapshot, exposed through `reconcileSnapshotDump()` and `reconcileTraceDump()` for IPC diagnostics. `PersistedWindowRestoreCatalog` stores relaunch restore intent such as workspace target, preferred monitor, and floating geometry so managed floating windows can be restored or rescued across launches.
 
-**WindowModel** (`Sources/OmniWM/Core/Workspace/WindowModel.swift`)
+**WindowModel** (`Sources/Nehir/Core/Workspace/WindowModel.swift`)
 
 The single source of truth for all tracked windows. Each `Entry` contains:
 
@@ -488,7 +484,7 @@ Entries are indexed by both `WindowToken` and raw `windowId` for fast lookup fro
 
 ### 4.3 Niri Layout Engine (Scrolling Columns)
 
-**Directory:** `Sources/OmniWM/Core/Layout/Niri/`
+**Directory:** `Sources/Nehir/Core/Layout/Niri/`
 
 Niri arranges windows in vertical columns that scroll horizontally, inspired by the [Niri](https://github.com/YaLTeR/niri) Wayland compositor.
 
@@ -545,51 +541,11 @@ The Niri directory is the largest subsystem. Files are organized by responsibili
 
 **Constraint Solving:** `NiriAxisSolver` (in `NiriConstraintSolver.swift`) distributes available space among windows in a column while respecting per-window min/max size constraints. Windows with `isConstraintFixed` get exact sizes; remaining space is distributed by weight. This runs during every layout calculation and handles edge cases like tabbed columns (all windows share the same height).
 
-### 4.4 Dwindle Layout Engine (BSP)
-
-**Directory:** `Sources/OmniWM/Core/Layout/Dwindle/`
-
-Dwindle recursively divides screen space using binary splits, similar to bspwm.
-
-**BSP Tree:**
-
-```
-DwindleNode (split: horizontal, ratio: 0.5)
-├── DwindleNode (leaf: window A)
-└── DwindleNode (split: vertical, ratio: 0.5)
-    ├── DwindleNode (leaf: window B)
-    └── DwindleNode (leaf: window C)
-```
-
-**Key types:**
-
-```swift
-final class DwindleNode {
-    let id: DwindleNodeId          // UUID
-    var kind: DwindleNodeKind
-    var parent: DwindleNode?
-    var children: [DwindleNode]    // 0 (leaf) or 2 (split)
-    // Animation properties for smooth transitions
-}
-
-enum DwindleNodeKind {
-    case split(orientation: DwindleOrientation, ratio: CGFloat)
-    case leaf(handle: WindowToken?, fullscreen: Bool)
-}
-
-enum DwindleOrientation {
-    case horizontal   // Left/right split
-    case vertical     // Top/bottom split
-}
-```
-
-**Smart split** chooses orientation based on the available space dimensions. **Preselection** lets users choose where the next window will be inserted.
-
 ### 4.5 Focus Lifecycle
 
-**File:** `Sources/OmniWM/Core/Controller/KeyboardFocusLifecycleCoordinator.swift`
+**File:** `Sources/Nehir/Core/Controller/KeyboardFocusLifecycleCoordinator.swift`
 
-Focus management is complex because OmniWM must coordinate its intent with what macOS actually does. The `FocusBridgeCoordinator` manages this:
+Focus management is complex because Nehir must coordinate its intent with what macOS actually does. The `FocusBridgeCoordinator` manages this:
 
 **The Deferred Focus Pattern:**
 
@@ -618,7 +574,7 @@ Focus management is complex because OmniWM must coordinate its intent with what 
 
 ### 4.6 Input Handling
 
-**Hotkeys** (`Sources/OmniWM/Core/Input/`)
+**Hotkeys** (`Sources/Nehir/Core/Input/`)
 
 `ActionCatalog` is the source of truth for the 67 hotkey-triggerable actions. It defines each action's title, category, layout compatibility, search terms, default and alternate bindings, and optional IPC command linkage. `HotkeyBinding` persists a `bindings` array per action, and `HotkeyBindingRegistry` canonicalizes both legacy single-binding payloads and newer multi-binding settings data.
 
@@ -626,13 +582,12 @@ Focus management is complex because OmniWM must coordinate its intent with what 
 
 - `.shared` — works with any layout (focus, move, workspace switch, float, scratchpad, UI toggles)
 - `.niri` — Niri-only (moveColumn, toggleColumnTabbed, focusPrevious, cycleColumnWidth)
-- `.dwindle` — Dwindle-only (moveToRoot, toggleSplit, swapSplit, preselect, resizeInDirection)
 
-**Command routing** (`Sources/OmniWM/Core/Controller/CommandHandler.swift`)
+**Command routing** (`Sources/Nehir/Core/Controller/CommandHandler.swift`)
 
-`CommandHandler.performCommand()` is a switch statement over all 67 `HotkeyCommand` cases, delegating to the appropriate handler. It first checks layout compatibility — a Niri command is ignored when Dwindle is active, and vice versa.
+`CommandHandler.performCommand()` is a switch statement over all 67 `HotkeyCommand` cases, delegating to the appropriate handler. It first checks layout compatibility.
 
-**Mouse events** (`Sources/OmniWM/Core/Controller/MouseEventHandler.swift`)
+**Mouse events** (`Sources/Nehir/Core/Controller/MouseEventHandler.swift`)
 
 Uses `CGEventTap` for system-wide mouse event interception:
 - **Focus-follows-mouse**: Debounced (100ms) focus change on mouse hover
@@ -640,7 +595,7 @@ Uses `CGEventTap` for system-wide mouse event interception:
 - **Interactive move/resize**: Option+Shift+drag for window repositioning
 - **Event coalescing**: Transient mouse events are batched and drained in coalesced bursts
 
-**SkyLight events** (`Sources/OmniWM/Core/SkyLight/CGSEventObserver.swift`)
+**SkyLight events** (`Sources/Nehir/Core/SkyLight/CGSEventObserver.swift`)
 
 Registers for window server notifications via private APIs:
 
@@ -659,7 +614,7 @@ Events are buffered in a lock-protected `PendingCGSEventState` and drained on th
 
 ### 4.7 Window Rules Engine
 
-**File:** `Sources/OmniWM/Core/Rules/WindowRuleEngine.swift`
+**File:** `Sources/Nehir/Core/Rules/WindowRuleEngine.swift`
 
 Evaluates windows against rules to produce a `WindowDecision`. Evaluation order (first match wins):
 
@@ -691,7 +646,7 @@ struct WindowRuleFacts {
 For the protocol specification, wire format, and CLI command reference, see [IPC-CLI.md](IPC-CLI.md). This section covers the internal code architecture.
 
 ```
-omniwmctl                         OmniWM process
+nehirctl                         Nehir process
 ─────────                         ──────────────
 CLIParser                         IPCServer
     │                                 │
@@ -721,11 +676,11 @@ IPCClient ──── Unix Socket ────► IPCConnection (per client)
 
 **Public surface registry:** `IPCAutomationManifest` is the source of truth for public IPC commands, queries, rule actions, subscriptions, and CLI discoverability metadata (including completion/help surfaces). The routers execute the behavior; the manifest defines what is exposed.
 
-**Security:** The trust boundary is the local macOS user account, not individual client processes. Each request carries a per-session authorization token stored in plaintext at `<socket-path>.secret`; the server also enforces socket permissions `0o600`, creates new socket directories with `0o700`, and verifies peer UID via `getpeereid()`. If `OMNIWM_SOCKET` points into an existing directory, OmniWM reuses that directory as-is instead of re-permissioning it, so custom socket paths should live in a private directory owned by the same user.
+**Security:** The trust boundary is the local macOS user account, not individual client processes. Each request carries a per-session authorization token stored in plaintext at `<socket-path>.secret`; the server also enforces socket permissions `0o600`, creates new socket directories with `0o700`, and verifies peer UID via `getpeereid()`. If `NEHIR_SOCKET` points into an existing directory, Nehir reuses that directory as-is instead of re-permissioning it, so custom socket paths should live in a private directory owned by the same user.
 
 ### 4.9 Accessibility Layer
 
-**File:** `Sources/OmniWM/Core/Ax/AXManager.swift`
+**File:** `Sources/Nehir/Core/Ax/AXManager.swift`
 
 **Per-app threading model:** `AXManager` maintains an `AppAXContext` per process. Each context runs an AX observer on a dedicated thread to receive accessibility callbacks (focused-window-changed, window-destroyed).
 
@@ -743,7 +698,7 @@ IPCClient ──── Unix Socket ────► IPCConnection (per client)
 
 ### 4.10 Animation System
 
-**Directory:** `Sources/OmniWM/Core/Animation/`
+**Directory:** `Sources/Nehir/Core/Animation/`
 
 **SpringAnimation** — critically-damped spring physics for smooth, responsive motion:
 
@@ -759,7 +714,6 @@ struct SpringConfig {
 
 Used for: viewport scrolling (Niri), workspace switch transitions, window movement animations.
 
-**CubicAnimation** — cubic easing for Dwindle node transitions (position and size).
 
 **AnimationClock** — monotonic time wrapper around `CACurrentMediaTime()`.
 
@@ -769,7 +723,7 @@ Used for: viewport scrolling (Niri), workspace switch transitions, window moveme
 
 ### 4.11 Border System
 
-**Files:** `Sources/OmniWM/Core/Border/BorderManager.swift`, `BorderWindow.swift`
+**Files:** `Sources/Nehir/Core/Border/BorderManager.swift`, `BorderWindow.swift`
 
 A lightweight `NSWindow` overlay that draws a rounded rectangle around the focused window:
 
@@ -792,7 +746,7 @@ A lightweight `NSWindow` overlay that draws a rounded rectangle around the focus
 | **Status Bar** | `UI/StatusBar/StatusBarController.swift` | Menu bar icon with settings access, manual update checks, and workspace summary |
 | **Release Updater** | `App/UpdateCoordinator.swift`, `UI/UpdateWindowController.swift` | Polls the latest GitHub release once per day on launch, supports manual checks from Settings and the status bar, and shows a manual-action popup with release notes |
 
-OmniWM utility windows such as Settings, App Rules, Sponsors, and the updater popup still register through `OwnedWindowRegistry`, but that type now acts as a facade over `SurfaceCoordinator` and `SurfaceScene`. The shared surface system assigns each owned UI surface a `SurfaceKind` and `SurfacePolicy`, centralizing hit-testing, screen-capture inclusion, and managed-focus-recovery suppression across overview, workspace bar, border, quake, and utility windows.
+Nehir utility windows such as Settings and App Rules still register through `OwnedWindowRegistry`, but that type now acts as a facade over `SurfaceCoordinator` and `SurfaceScene`. The shared surface system assigns each owned UI surface a `SurfaceKind` and `SurfacePolicy`, centralizing hit-testing, screen-capture inclusion, and managed-focus-recovery suppression across overview, workspace bar, border, quake, and utility windows.
 
 ---
 
@@ -873,7 +827,7 @@ All windows repositioned to accommodate the new one
 
 ### 5.3 IPC Command Flow
 
-User runs `omniwmctl command focus left`:
+User runs `nehirctl command focus left`:
 
 ```
 CLIParser.parse(["command", "focus", "left"])
@@ -907,64 +861,64 @@ CLIRenderer displays result
 
 ### 6.1 Adding a New Hotkey Command
 
-1. **Add the enum case** in `Sources/OmniWM/Core/Input/HotkeyCommand.swift`:
+1. **Add the enum case** in `Sources/Nehir/Core/Input/HotkeyCommand.swift`:
    ```swift
    case myNewCommand
    ```
-   Set `layoutCompatibility` (`.shared`, `.niri`, or `.dwindle`).
+   Set `layoutCompatibility` (`.shared`).
 
-2. **Handle it** in `Sources/OmniWM/Core/Controller/CommandHandler.swift`:
+2. **Handle it** in `Sources/Nehir/Core/Controller/CommandHandler.swift`:
    ```swift
    case .myNewCommand:
        // implementation or delegation to a handler
    ```
 
-3. **Add the action spec** in `Sources/OmniWM/Core/Input/ActionCatalog.swift` so the command has its title, category, search metadata, and default or alternate bindings. `DefaultHotkeyBindings.swift` is only a thin wrapper over this catalog.
+3. **Add the action spec** in `Sources/Nehir/Core/Input/ActionCatalog.swift` so the command has its title, category, search metadata, and default or alternate bindings. `DefaultHotkeyBindings.swift` is only a thin wrapper over this catalog.
 
-4. **Expose via IPC** in `Sources/OmniWM/IPC/IPCCommandRouter.swift` — add the routing to the new command when it should be scriptable.
+4. **Expose via IPC** in `Sources/Nehir/IPC/IPCCommandRouter.swift` — add the routing to the new command when it should be scriptable.
 
-5. **Add CLI support** in `Sources/OmniWMCtl/CLIParser.swift` — add the command name.
+5. **Add CLI support** in `Sources/NehirCtl/CLIParser.swift` — add the command name.
 
-6. **Update the automation manifest** in `Sources/OmniWMIPC/IPCAutomationManifest.swift` — add the command description.
+6. **Update the automation manifest** in `Sources/NehirIPC/IPCAutomationManifest.swift` — add the command description.
 
 Actions can carry multiple persisted bindings, so any extra default shortcuts should be modeled in `ActionCatalog` rather than as separate commands.
 
 ### 6.2 Adding a New IPC Query
 
-1. **Define the response model** in `Sources/OmniWMIPC/IPCModels.swift`.
+1. **Define the response model** in `Sources/NehirIPC/IPCModels.swift`.
 
-2. **Implement the query** in `Sources/OmniWM/IPC/IPCQueryRouter.swift`:
+2. **Implement the query** in `Sources/Nehir/IPC/IPCQueryRouter.swift`:
    ```swift
    case "my-query":
        let result = // gather data from WorkspaceManager, etc.
        return .success(result)
    ```
 
-3. **Add CLI rendering** in `Sources/OmniWMCtl/CLIRenderer.swift` — format the response for terminal output.
+3. **Add CLI rendering** in `Sources/NehirCtl/CLIRenderer.swift` — format the response for terminal output.
 
-4. **Add CLI parsing** in `Sources/OmniWMCtl/CLIParser.swift` — add the query name.
+4. **Add CLI parsing** in `Sources/NehirCtl/CLIParser.swift` — add the query name.
 
-5. **Update the manifest** in `Sources/OmniWMIPC/IPCAutomationManifest.swift`.
+5. **Update the manifest** in `Sources/NehirIPC/IPCAutomationManifest.swift`.
 
 ### 6.3 Adding a New Setting
 
-1. **Add the property** to `Sources/OmniWM/Core/Config/SettingsStore.swift`.
+1. **Add the property** to `Sources/Nehir/Core/Config/SettingsStore.swift`.
 
 2. **Wire the runtime behavior** in `WMController.applyPersistedSettings()` or the relevant handler that consumes the setting.
 
-3. **Add UI** in the appropriate settings tab under `Sources/OmniWM/UI/`.
+3. **Add UI** in the appropriate settings tab under `Sources/Nehir/UI/`.
 
-4. **Update the TOML settings model** in `Sources/OmniWM/Core/Config/SettingsExport.swift`, `Sources/OmniWM/Core/Config/CanonicalTOMLConfig.swift`, and `Sources/OmniWM/Core/Config/SettingsTOMLCodec.swift` for persisted user preferences that belong in editable config. Do not include remote payloads or operational cache state such as updater release notes, release URLs, last-check timestamps, or skipped-release markers.
+4. **Update the TOML settings model** in `Sources/Nehir/Core/Config/SettingsExport.swift`, `Sources/Nehir/Core/Config/CanonicalTOMLConfig.swift`, and `Sources/Nehir/Core/Config/SettingsTOMLCodec.swift` for persisted user preferences that belong in editable config. Do not include remote payloads or operational cache state such as updater release notes, release URLs, last-check timestamps, or skipped-release markers.
 
-5. **Check settings-file touchpoints** when the change affects config discoverability or UX. `Sources/OmniWM/UI/SettingsFileWorkflow.swift` is the open/reveal workflow layer, and the `Settings File` section in `Sources/OmniWM/UI/SettingsView.swift` is the main user-facing entry point; most new settings do not need workflow code changes, but contributor-facing config behavior and copy should remain accurate.
+5. **Check settings-file touchpoints** when the change affects config discoverability or UX. `Sources/Nehir/UI/SettingsFileWorkflow.swift` is the open/reveal workflow layer, and the `Settings File` section in `Sources/Nehir/UI/SettingsView.swift` is the main user-facing entry point; most new settings do not need workflow code changes, but contributor-facing config behavior and copy should remain accurate.
 
 6. **Handle schema compatibility** in the TOML codec if needed. `settings.toml` is the only settings source of truth.
 
-7. **Add round-trip coverage** in tests: verify the setting survives store load/save and TOML encode/decode so it cannot silently disappear from `~/.config/omniwm/settings.toml`.
+7. **Add round-trip coverage** in tests: verify the setting survives store load/save and TOML encode/decode so it cannot silently disappear from `~/.config/nehir/settings.toml`.
 
 ### 6.4 Modifying Layout Behavior
 
-1. **Identify the engine**: Niri code is in `Sources/OmniWM/Core/Layout/Niri/`, Dwindle in `Sources/OmniWM/Core/Layout/Dwindle/`.
+1. **Identify the engine**: Niri code is in `Sources/Nehir/Core/Layout/Niri/`.
 
 2. **Find the relevant extension**: Niri splits logic across extensions:
    - `NiriLayoutEngine+Animation.swift` — animation tick and spring updates
@@ -984,10 +938,10 @@ Actions can carry multiple persisted bindings, so any extra default shortcuts sh
 
 ### 6.5 Working with Private APIs
 
-OmniWM uses SkyLight (private macOS framework) for low-latency window operations. The wrapper pattern is:
+Nehir uses SkyLight (private macOS framework) for low-latency window operations. The wrapper pattern is:
 
-1. **Function declarations** use `@_silgen_name` in `Sources/OmniWM/Core/PrivateAPIs.swift`
-2. **Dynamic loading** via `dlopen`/`dlsym` in `Sources/OmniWM/Core/SkyLight/SkyLight.swift` for functions that can't use `@_silgen_name`
+1. **Function declarations** use `@_silgen_name` in `Sources/Nehir/Core/PrivateAPIs.swift`
+2. **Dynamic loading** via `dlopen`/`dlsym` in `Sources/Nehir/Core/SkyLight/SkyLight.swift` for functions that can't use `@_silgen_name`
 3. All private API usage is wrapped in safe Swift functions with fallback behavior
 
 **Risk model:** Private APIs can break across macOS versions. When adding new private API usage, provide a fallback path using public APIs where possible, and test across macOS versions.
@@ -998,7 +952,7 @@ OmniWM uses SkyLight (private macOS framework) for low-latency window operations
 
 **Runner:** `swift test` via SwiftPM. Requires macOS 15+.
 
-**Test directory:** `Tests/OmniWMTests/` (55 files: 52 test files + 3 support files)
+**Test directory:** `Tests/NehirTests/` (55 files: 52 test files + 3 support files)
 
 **Test patterns:**
 
@@ -1029,13 +983,12 @@ OmniWM uses SkyLight (private macOS framework) for low-latency window operations
 | `WorkspaceDescriptor` | A workspace definition: `id` (UUID), `name`, optional `assignedMonitorPoint`. |
 | `SessionState` | Ephemeral runtime state in `WorkspaceManager`: focused window, visible workspace per monitor, viewport states. |
 | `NiriRoot` / `NiriContainer` / `NiriWindow` | The three-level Niri layout tree: root → columns → windows. |
-| `DwindleNode` | BSP tree node. Kind is either `.split(orientation, ratio)` or `.leaf(handle, fullscreen)`. |
 | `ViewportState` | Niri's horizontal scroll state: `.static`, `.gesture`, or `.spring`. |
 | `LayoutRefreshController` | Central refresh coordinator. Schedules, debounces, and coalesces layout recalculations. |
 | `RefreshReason` | Why a refresh was requested (e.g., `.axWindowCreated`, `.layoutCommand`). Maps to a refresh route. |
 | `RefreshRoute` | How the refresh executes: `fullRescan`, `relayout`, `immediateRelayout`, `visibilityRefresh`, `windowRemoval`. |
 | `ManagedFocusRequest` | In-flight focus request with status (`.pending`/`.confirmed`) and retry tracking. |
-| `FocusBridgeCoordinator` | Focus state machine coordinating OmniWM's focus intent with macOS confirmation. |
+| `FocusBridgeCoordinator` | Focus state machine coordinating Nehir's focus intent with macOS confirmation. |
 | `CGSEventObserver` | SkyLight event listener for window create/destroy/frame-change/front-app-change. |
 | `HotkeyCommand` | Enum of all 67 commands that can be triggered by hotkeys or IPC. |
 | `IPCApplicationBridge` | Swift actor routing IPC requests to `@MainActor` command/query/rule handlers. |
@@ -1046,5 +999,4 @@ OmniWM uses SkyLight (private macOS framework) for low-latency window operations
 | `SpringConfig` | Animation parameters: `response`, `dampingFraction`. Presets: `.snappy`, `.balanced`, `.gentle`. |
 | `WindowDecision` | Result of rule evaluation: `disposition`, `source`, `workspaceName`, `ruleEffects`. |
 | `WindowRuleFacts` | Input for rule evaluation: app name, AX facts (role, subrole, title), size constraints. |
-| `LayoutType` | `.defaultLayout`, `.niri`, or `.dwindle` — per-workspace layout selection. |
 | `Scratchpad` | A special slot for a single transient window that can be toggled in/out of view. |

@@ -1,23 +1,7 @@
 ---
-title: OmniWM Contribution Guide
+title: Contributing to Nehir
 ---
 
-# OmniWM Contribution Guide
+# Contributing to Nehir
 
-This page is the contributor entry point for the docs site. The canonical contribution guide lives in the repository root at [CONTRIBUTING.md](https://github.com/BarutSRB/OmniWM/blob/main/CONTRIBUTING.md).
-
-This page stays short on purpose so the actual project rules only have one source of truth.
-
-## Start Here
-
-- Read the [canonical contribution guide](https://github.com/BarutSRB/OmniWM/blob/main/CONTRIBUTING.md).
-- Review the [Architecture Guide](ARCHITECTURE.md) if your change touches core internals, layout behavior, or app structure.
-- Review the [IPC & CLI Reference](IPC-CLI.md) if your change affects automation, commands, queries, or scripting.
-- For the user-facing overview, installation notes, and screenshots, see the [README](https://github.com/BarutSRB/OmniWM/blob/main/README.md).
-
-## Project Direction at a Glance
-
-- Refactors are welcome when they come with a detailed reason and a clear benefit.
-- **C** or **Zig** rewrites are **very welcome** where there is a strong technical reason they fit better.
-- Otherwise, keep contributions in Swift.
-- Rust rewrites are not a project direction for OmniWM.
+See [CONTRIBUTING.md](../CONTRIBUTING.md) in the project root.

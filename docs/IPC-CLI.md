@@ -1,10 +1,10 @@
 ---
-title: OmniWM IPC & CLI Reference
+title: Nehir IPC & CLI Reference
 ---
 
-# OmniWM IPC & CLI Reference
+# Nehir IPC & CLI Reference
 
-This document covers the OmniWM automation surface. For the docs hub, see [Documentation Home](index.md). For internal architecture, see [ARCHITECTURE.md](ARCHITECTURE.md). For contribution process, see the [Contribution Guide](CONTRIBUTING.md).
+This document covers the Nehir automation surface. For the docs hub, see [Documentation Home](index.md). For internal architecture, see [ARCHITECTURE.md](ARCHITECTURE.md). For contribution process, see the [Contribution Guide](CONTRIBUTING.md).
 
 ## Table of Contents
 
@@ -25,7 +25,6 @@ This document covers the OmniWM automation surface. For the docs hub, see [Docum
   - [Move to Workspace](#move-to-workspace)
   - [Monitor Focus](#monitor-focus)
   - [Column Operations (Niri)](#column-operations-niri)
-  - [Dwindle Operations](#dwindle-operations)
   - [Layout & Sizing](#layout--sizing)
   - [Window Management](#window-management)
   - [UI Toggles](#ui-toggles)
@@ -58,35 +57,35 @@ This document covers the OmniWM automation surface. For the docs hub, see [Docum
 
 ## Architecture
 
-OmniWM's IPC system is split across three Swift modules:
+Nehir's IPC system is split across three Swift modules:
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
-│  OmniWMCtl (CLI binary)                                                  │
+│  NehirCtl (CLI binary)                                                  │
 │  CLIEntry → CLIRuntime → CLIParser → IPCClient                           │
 │  CLIRenderer, CLICompletionGenerator                                     │
-│  Depends on: OmniWMIPC only                                             │
+│  Depends on: NehirIPC only                                             │
 └────────────────────────────┬─────────────────────────────────────────────┘
                              │ Unix domain socket (NDJSON)
 ┌────────────────────────────┴─────────────────────────────────────────────┐
-│  OmniWMIPC (shared library)                                              │
+│  NehirIPC (shared library)                                              │
 │  IPCModels, IPCWire, IPCSocketPath, IPCAutomationManifest                │
 │  IPCRuleValidator                                                        │
 │  No dependencies                                                         │
 └────────────────────────────┬─────────────────────────────────────────────┘
                              │
 ┌────────────────────────────┴─────────────────────────────────────────────┐
-│  OmniWM (app)                                                            │
+│  Nehir (app)                                                            │
 │  IPCServer → IPCConnection → IPCApplicationBridge                        │
 │  IPCCommandRouter, IPCQueryRouter, IPCRuleRouter, IPCEventBroker         │
-│  Depends on: OmniWMIPC, AppKit, SkyLight, etc.                          │
+│  Depends on: NehirIPC, AppKit, SkyLight, etc.                          │
 └──────────────────────────────────────────────────────────────────────────┘
 ```
 
 **Request flow:**
 
 ```
-omniwmctl command focus left
+nehirctl command focus left
     │
     ▼
 CLIEntry.main()
@@ -134,20 +133,20 @@ Local commands such as `help`, `--help`, `-h`, and `completion` never open the I
 
 ### CLI Binary Location
 
-The `omniwmctl` binary is bundled inside the OmniWM app at:
+The `nehirctl` binary is bundled inside the Nehir app at:
 
 ```
-OmniWM.app/Contents/MacOS/omniwmctl
+Nehir.app/Contents/MacOS/nehirctl
 ```
 
 ### Installing to PATH
 
-Use the OmniWM status bar menu: **Install CLI to PATH**. OmniWM chooses the first writable directory already on `PATH` inside your home directory. If none is available, it falls back to `~/.local/bin`, then `~/bin`.
+Use the Nehir status bar menu: **Install CLI to PATH**. Nehir chooses the first writable directory already on `PATH` inside your home directory. If none is available, it falls back to `~/.local/bin`, then `~/bin`.
 
 The menu also shows current CLI status:
-- **Homebrew-managed** — CLI is already available from a Homebrew path, and OmniWM leaves it alone
-- **App-managed** — symlink created by OmniWM, removable via menu
-- **Not installed** — no OmniWM-managed CLI link is present yet
+- **Homebrew-managed** — CLI is already available from a Homebrew path, and Nehir leaves it alone
+- **App-managed** — symlink created by Nehir, removable via menu
+- **Not installed** — no Nehir-managed CLI link is present yet
 - **Conflict** — another file exists at the target path
 
 ### Enabling IPC
@@ -168,10 +167,10 @@ Turning **Enable IPC** on starts the server immediately and creates the Unix soc
 
 | Item | Path |
 |------|------|
-| Socket | `~/Library/Caches/com.barut.OmniWM/ipc.sock` |
-| Secret | `~/Library/Caches/com.barut.OmniWM/ipc.sock.secret` |
+| Socket | `~/Library/Caches/com.nehir/ipc.sock` |
+| Secret | `~/Library/Caches/com.nehir/ipc.sock.secret` |
 
-The socket path can be overridden with the `OMNIWM_SOCKET` environment variable. The secret file path is always `<socket-path>.secret`. For custom socket paths, prefer a private same-user directory such as `$TMPDIR/omniwm/ipc.sock` after creating the parent directory with mode `0700`. Avoid shared directories such as `/tmp`.
+The socket path can be overridden with the `NEHIR_SOCKET` environment variable. The secret file path is always `<socket-path>.secret`. For custom socket paths, prefer a private same-user directory such as `$TMPDIR/nehir/ipc.sock` after creating the parent directory with mode `0700`. Avoid shared directories such as `/tmp`.
 
 The authorization token is a random UUID generated each time the IPC server starts. Clients must include this token in every request. The CLI reads it automatically from the secret file.
 
@@ -199,14 +198,14 @@ Examples in this document are pretty-printed for readability. The actual wire fo
 
 The trust boundary is the local macOS user account, not individual client processes. Any process running as the same user can read the secret file and use the IPC API once IPC is enabled.
 
-If `OMNIWM_SOCKET` points into an existing directory, OmniWM reuses that directory as-is instead of re-permissioning it. For custom socket paths, prefer a private directory owned by the same user and avoid shared locations such as `/tmp`.
+If `NEHIR_SOCKET` points into an existing directory, Nehir reuses that directory as-is instead of re-permissioning it. For custom socket paths, prefer a private directory owned by the same user and avoid shared locations such as `/tmp`.
 
 ---
 
 ## CLI Reference
 
 ```
-omniwmctl <command> [arguments...] [--format json|table|tsv|text] [--json]
+nehirctl <command> [arguments...] [--format json|table|tsv|text] [--json]
 ```
 
 ### Top-Level Commands
@@ -214,9 +213,9 @@ omniwmctl <command> [arguments...] [--format json|table|tsv|text] [--json]
 | Command | Type | Description |
 |---------|------|-------------|
 | `ping` | remote | Verify IPC reachability and return `pong` |
-| `version` | remote | Return the OmniWM app version and IPC protocol version |
+| `version` | remote | Return the Nehir app version and IPC protocol version |
 | `command` | remote | Execute window manager commands through the IPC command surface |
-| `query` | remote | Query OmniWM state, registries, and protocol capabilities |
+| `query` | remote | Query Nehir state, registries, and protocol capabilities |
 | `rule` | remote | Manage persisted window rules and reapply them to windows |
 | `workspace` | remote | Perform workspace actions such as focusing by workspace name |
 | `window` | remote | Perform window actions using session-scoped opaque window IDs |
@@ -253,7 +252,7 @@ Global flags must appear before `--exec` in watch commands.
 Execute window manager commands. These invoke the same code path as hotkey-bound commands.
 
 ```
-omniwmctl command <command-path> [arguments...]
+nehirctl command <command-path> [arguments...]
 ```
 
 ### Focus
@@ -317,25 +316,17 @@ Workspace IDs are positive numeric strings. Direct hotkeys stay limited to `1-9`
 | `command cycle-column-width forward` | — | shared | Cycle column width presets forward |
 | `command cycle-column-width backward` | — | shared | Cycle column width presets backward |
 
-### Dwindle Operations
+### Niri Operations
 
 | Command | Arguments | Layout | Description |
 |---------|-----------|--------|-------------|
-| `command move-to-root` | — | dwindle | Move the selected window to the root split |
-| `command toggle-split` | — | dwindle | Toggle the active split orientation |
-| `command swap-split` | — | dwindle | Swap the active split |
-| `command resize` | `<left\|right\|up\|down> <grow\|shrink>` | dwindle | Resize the selected window |
-| `command preselect` | `<left\|right\|up\|down>` | dwindle | Set the preselection direction |
-| `command preselect clear` | — | dwindle | Clear the preselection |
 
 ### Layout & Sizing
 
 | Command | Arguments | Layout | Description |
 |---------|-----------|--------|-------------|
 | `command balance-sizes` | — | shared | Balance layout sizes in the active workspace |
-| `command toggle-workspace-layout` | — | shared | Toggle the workspace between Niri and Dwindle |
-| `command set-workspace-layout` | `<default\|niri\|dwindle>` | shared | Set the workspace layout explicitly |
-| `command toggle-fullscreen` | — | shared | Toggle OmniWM-managed fullscreen |
+| `command toggle-fullscreen` | — | shared | Toggle Nehir-managed fullscreen |
 | `command toggle-native-fullscreen` | — | shared | Toggle native macOS fullscreen |
 
 ### Window Management
@@ -362,7 +353,6 @@ Workspace IDs are positive numeric strings. Direct hotkeys stay limited to `1-9`
 **Layout compatibility:**
 - `shared` — works with any active layout
 - `niri` — only works when the active workspace uses the Niri layout
-- `dwindle` — only works when the active workspace uses the Dwindle layout
 
 Commands sent to an incompatible layout return `layout_mismatch`.
 
@@ -371,7 +361,7 @@ Commands sent to an incompatible layout return `layout_mismatch`.
 ## Queries
 
 ```
-omniwmctl query <name> [selectors...] [--fields <field1,field2,...>] [--format json|table|tsv|text]
+nehirctl query <name> [selectors...] [--fields <field1,field2,...>] [--format json|table|tsv|text]
 ```
 
 Default output format for queries is `json`.
@@ -438,25 +428,25 @@ Field tokens are part of the CLI contract. Returned JSON still uses the payload 
 
 ```bash
 # List all windows on workspace "main"
-omniwmctl query windows --workspace main
+nehirctl query windows --workspace main
 
 # Get focused window in table format
-omniwmctl query focused-window --format table
+nehirctl query focused-window --format table
 
 # List visible floating windows, only return id and title
-omniwmctl query windows --visible --floating --fields id,title
+nehirctl query windows --visible --floating --fields id,title
 
 # Get the active workspace on the current interaction monitor
-omniwmctl query workspaces --current
+nehirctl query workspaces --current
 
 # Check server capabilities
-omniwmctl query capabilities
+nehirctl query capabilities
 
 # Debug why a window was tiled/floated
-omniwmctl query focused-window-decision
+nehirctl query focused-window-decision
 
 # Dump the reconcile runtime snapshot and recent trace
-omniwmctl query reconcile-debug
+nehirctl query reconcile-debug
 ```
 
 `reconcile-debug` returns diagnostic text fields: `snapshot`, `trace`, and `traceLimit`.
@@ -468,7 +458,7 @@ omniwmctl query reconcile-debug
 Operate on specific windows by their session-scoped opaque ID.
 
 ```
-omniwmctl window <action> <opaque-id>
+nehirctl window <action> <opaque-id>
 ```
 
 | Action | Description |
@@ -477,14 +467,14 @@ omniwmctl window <action> <opaque-id>
 | `navigate` | Navigate to a managed window (switches workspace if needed) |
 | `summon-right` | Summon a window to the right of the currently focused window |
 
-Window IDs are session-scoped. They become stale after OmniWM restarts. Obtain IDs from query results (e.g., `omniwmctl query windows`).
+Window IDs are session-scoped. They become stale after Nehir restarts. Obtain IDs from query results (e.g., `nehirctl query windows`).
 
 ---
 
 ## Workspace Actions
 
 ```
-omniwmctl workspace focus-name <name>
+nehirctl workspace focus-name <name>
 ```
 
 | Action | Arguments | Description |
@@ -501,7 +491,7 @@ Manage persisted window rules that control layout behavior and default workspace
 Rule add, replace, and config reload update initial placement defaults; existing managed windows stay on their current workspace unless `rule apply` is used.
 
 ```
-omniwmctl rule <action> [arguments...] [options...]
+nehirctl rule <action> [arguments...] [options...]
 ```
 
 ### Rule Options
@@ -526,7 +516,7 @@ Bundle IDs must match the pattern: `^[a-zA-Z0-9]+([.-][a-zA-Z0-9]+)*$`
 **Add a rule:**
 
 ```bash
-omniwmctl rule add --bundle-id <bundle-id> [options...]
+nehirctl rule add --bundle-id <bundle-id> [options...]
 ```
 
 Appends a new rule to the end of the rule list. First matching app windows use its placement defaults; already managed windows are not moved.
@@ -534,7 +524,7 @@ Appends a new rule to the end of the rule list. First matching app windows use i
 **Replace a rule:**
 
 ```bash
-omniwmctl rule replace <rule-id> --bundle-id <bundle-id> [options...]
+nehirctl rule replace <rule-id> --bundle-id <bundle-id> [options...]
 ```
 
 Replaces a rule in-place by its UUID. The rule ID is preserved. Already managed windows are not moved until rules are explicitly applied.
@@ -542,7 +532,7 @@ Replaces a rule in-place by its UUID. The rule ID is preserved. Already managed 
 **Remove a rule:**
 
 ```bash
-omniwmctl rule remove <rule-id>
+nehirctl rule remove <rule-id>
 ```
 
 Removes a rule by its UUID.
@@ -550,7 +540,7 @@ Removes a rule by its UUID.
 **Move a rule:**
 
 ```bash
-omniwmctl rule move <rule-id> <position>
+nehirctl rule move <rule-id> <position>
 ```
 
 Moves a rule to a new one-based position in the rule list.
@@ -558,7 +548,7 @@ Moves a rule to a new one-based position in the rule list.
 **Apply rules:**
 
 ```bash
-omniwmctl rule apply [--focused | --window <opaque-id> | --pid <pid>]
+nehirctl rule apply [--focused | --window <opaque-id> | --pid <pid>]
 ```
 
 Re-evaluates the current rule set against the target. Defaults to `--focused` if no target is specified. This is the explicit path for applying placement rules to already managed windows.
@@ -573,26 +563,26 @@ Re-evaluates the current rule set against the target. Defaults to `--focused` if
 
 ```bash
 # Float all Finder windows
-omniwmctl rule add --bundle-id com.apple.finder --layout float
+nehirctl rule add --bundle-id com.apple.finder --layout float
 
 # Tile initial Safari windows on workspace 2
-omniwmctl rule add --bundle-id com.apple.Safari --layout tile --assign-to-workspace 2
+nehirctl rule add --bundle-id com.apple.Safari --layout tile --assign-to-workspace 2
 
 # Float windows with "Preferences" in the title
-omniwmctl rule add --bundle-id com.apple.Safari --title-substring Preferences --layout float
+nehirctl rule add --bundle-id com.apple.Safari --title-substring Preferences --layout float
 
 # Remove a rule
-omniwmctl rule remove 550e8400-e29b-41d4-a716-446655440000
+nehirctl rule remove 550e8400-e29b-41d4-a716-446655440000
 
 # Explicitly reapply rules to all windows of a specific app
-omniwmctl rule apply --pid 12345
+nehirctl rule apply --pid 12345
 ```
 
 ---
 
 ## Subscriptions
 
-Subscribe to real-time state change events from OmniWM.
+Subscribe to real-time state change events from Nehir.
 
 ### Delivery Pipeline
 
@@ -621,8 +611,8 @@ Workspace bar and layout refresh work is only produced when the UI or IPC curren
 Stream the subscribe response and subsequent events to stdout as JSON.
 
 ```
-omniwmctl subscribe <channels> [--no-send-initial]
-omniwmctl subscribe --all [--no-send-initial]
+nehirctl subscribe <channels> [--no-send-initial]
+nehirctl subscribe --all [--no-send-initial]
 ```
 
 Channels are specified as a comma-separated list or with `--all` for all channels.
@@ -632,19 +622,19 @@ Channels are specified as a comma-separated list or with `--all` for all channel
 | `--all` | Subscribe to all channels |
 | `--no-send-initial` | Skip sending initial state snapshot |
 
-Output is always JSON. Stdout begins with a single pretty-printed `IPCResponse` envelope with `kind: "subscribe"` and `status: "subscribed"`. After that, OmniWM emits a best-effort initial state snapshot for each subscribed channel unless `--no-send-initial` is used, followed by live `IPCEventEnvelope` updates as they occur.
+Output is always JSON. Stdout begins with a single pretty-printed `IPCResponse` envelope with `kind: "subscribe"` and `status: "subscribed"`. After that, Nehir emits a best-effort initial state snapshot for each subscribed channel unless `--no-send-initial` is used, followed by live `IPCEventEnvelope` updates as they occur.
 
 **Examples:**
 
 ```bash
 # Watch focus changes
-omniwmctl subscribe focus
+nehirctl subscribe focus
 
 # Watch all events
-omniwmctl subscribe --all
+nehirctl subscribe --all
 
 # Watch workspace and window changes without initial state
-omniwmctl subscribe active-workspace,windows-changed --no-send-initial
+nehirctl subscribe active-workspace,windows-changed --no-send-initial
 ```
 
 ### watch
@@ -652,8 +642,8 @@ omniwmctl subscribe active-workspace,windows-changed --no-send-initial
 Subscribe to events and execute a command for each event received. The event data is passed to the child process on stdin.
 
 ```
-omniwmctl watch <channels> [--no-send-initial] --exec <command> [args...]
-omniwmctl watch --all [--no-send-initial] --exec <command> [args...]
+nehirctl watch <channels> [--no-send-initial] --exec <command> [args...]
+nehirctl watch --all [--no-send-initial] --exec <command> [args...]
 ```
 
 The `--exec` flag is required and marks the boundary between watch flags and the child command. Everything after `--exec` is the child command and its arguments.
@@ -664,49 +654,49 @@ The `--exec` flag is required and marks the boundary between watch flags and the
 
 | Variable | Description |
 |----------|-------------|
-| `OMNIWM_EVENT_CHANNEL` | Subscription channel name (e.g., `focus`) |
-| `OMNIWM_EVENT_KIND` | Event result kind |
-| `OMNIWM_EVENT_ID` | Event ID |
+| `NEHIR_EVENT_CHANNEL` | Subscription channel name (e.g., `focus`) |
+| `NEHIR_EVENT_KIND` | Event result kind |
+| `NEHIR_EVENT_ID` | Event ID |
 
 The child process inherits the parent's stdout, stderr, and environment. Bare executable names are resolved through `PATH`; use an absolute executable path when you want a fixed command target. The event JSON is written to the child's stdin.
 
-If you persist event streams, prefer a per-user directory such as `~/Library/Logs/OmniWM/` and restrictive permissions such as `umask 077`.
+If you persist event streams, prefer a per-user directory such as `~/Library/Logs/Nehir/` and restrictive permissions such as `umask 077`.
 
 **Examples:**
 
 ```bash
 # Log focus changes to a file
-mkdir -p ~/Library/Logs/OmniWM
-umask 077 && omniwmctl watch focus --exec tee -a ~/Library/Logs/OmniWM/focus.ndjson
+mkdir -p ~/Library/Logs/Nehir
+umask 077 && nehirctl watch focus --exec tee -a ~/Library/Logs/Nehir/focus.ndjson
 
 # Run a script on workspace changes
-omniwmctl watch active-workspace --exec ./on-workspace-change.sh
+nehirctl watch active-workspace --exec ./on-workspace-change.sh
 
 # Process all events with jq
-omniwmctl watch --all --exec jq '.result'
+nehirctl watch --all --exec jq '.result'
 ```
 
 ---
 
 ## Shell Completion
 
-Generate shell completion scripts for `omniwmctl`.
+Generate shell completion scripts for `nehirctl`.
 
 ```
-omniwmctl completion <zsh|bash|fish>
+nehirctl completion <zsh|bash|fish>
 ```
 
 **Setup:**
 
 ```bash
 # Zsh — add to ~/.zshrc
-eval "$(omniwmctl completion zsh)"
+eval "$(nehirctl completion zsh)"
 
 # Bash — add to ~/.bashrc
-eval "$(omniwmctl completion bash)"
+eval "$(nehirctl completion bash)"
 
 # Fish — add to ~/.config/fish/config.fish
-omniwmctl completion fish | source
+nehirctl completion fish | source
 ```
 
 Completions are context-aware: query names, selectors, field names, command paths, channel names, rule actions, and argument values are all completed dynamically based on the automation manifest.
@@ -844,7 +834,7 @@ The `result` type corresponds to the channel's result kind (see [Channels](#chan
 
 ### CLI-Local JSON Errors
 
-When JSON output is active and `omniwmctl` fails before or outside the IPC request/response path, it emits a client-side failure envelope instead of an `IPCResponse`. This is used for argument parsing failures, transport failures, and unexpected internal CLI errors. `query` and `subscribe` default to JSON output even without an explicit `--json` flag.
+When JSON output is active and `nehirctl` fails before or outside the IPC request/response path, it emits a client-side failure envelope instead of an `IPCResponse`. This is used for argument parsing failures, transport failures, and unexpected internal CLI errors. `query` and `subscribe` default to JSON output even without an explicit `--json` flag.
 
 ```json
 {
@@ -901,10 +891,10 @@ ow_…  5678   Safari    GitHub        web        Built-in  tiling   no       ye
 
 | Variable | Description |
 |----------|-------------|
-| `OMNIWM_SOCKET` | Override the default IPC socket path |
-| `OMNIWM_EVENT_CHANNEL` | (watch child) Subscription channel name |
-| `OMNIWM_EVENT_KIND` | (watch child) Event result kind |
-| `OMNIWM_EVENT_ID` | (watch child) Event ID |
+| `NEHIR_SOCKET` | Override the default IPC socket path |
+| `NEHIR_EVENT_CHANNEL` | (watch child) Subscription channel name |
+| `NEHIR_EVENT_KIND` | (watch child) Event result kind |
+| `NEHIR_EVENT_ID` | (watch child) Event ID |
 
 ---
 

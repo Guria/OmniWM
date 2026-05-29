@@ -40,10 +40,8 @@ animationsEnabled = true
 defaultLayoutType = "niri"
 hotkeysEnabled = true
 ipcEnabled = false
-leaderKey = "Modifier+Space"
 modifierTrigger = "Option+Command"
 preventSleepEnabled = false
-sequenceTimeoutMilliseconds = 800
 updateChecksEnabled = true
 
 [gestures]

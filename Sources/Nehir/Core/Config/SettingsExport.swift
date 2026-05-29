@@ -44,8 +44,6 @@ struct SettingsExport: Equatable {
 
     var hotkeyBindings: [HotkeyBinding]
     var modifierTrigger: ModifierKeyTrigger
-    var leaderKey: KeyBinding
-    var sequenceTimeoutMilliseconds: Int
 
     var workspaceBarEnabled: Bool
     var workspaceBarShowLabels: Bool
@@ -136,8 +134,6 @@ extension SettingsExport {
             borderColorAlpha: 1.0,
             hotkeyBindings: HotkeyBindingRegistry.defaults(),
             modifierTrigger: .default,
-            leaderKey: .defaultLeader,
-            sequenceTimeoutMilliseconds: 800,
             workspaceBarEnabled: true,
             workspaceBarShowLabels: true,
             workspaceBarShowFloatingWindows: false,

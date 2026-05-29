@@ -46,9 +46,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func finishBootstrap() {
         let storagePaths = NehirStoragePaths.live
 
-        // One-time migration from OmniWM config
-        migrateOmniWMSettingsIfNeeded(to: storagePaths.configDirectory)
-
         let runtimeState = RuntimeStateStore(directory: storagePaths.stateDirectory)
         self.runtimeStateStore = runtimeState
 
@@ -138,59 +135,5 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         alert.addButton(withTitle: "OK")
         NSApplication.shared.activate(ignoringOtherApps: true)
         _ = alert.runModal()
-    }
-
-    /// Migrates settings from `~/.config/omniwm/settings.toml` to the Nehir config directory
-    /// if no Nehir config exists yet. Strips the `[dwindle]` and `monitorDwindleOverrides`
-    /// sections since they are no longer supported.
-    private func migrateOmniWMSettingsIfNeeded(to nehirConfigDir: URL) {
-        let nehirSettings = nehirConfigDir.appendingPathComponent("settings.toml")
-        guard !FileManager.default.fileExists(atPath: nehirSettings.path) else { return }
-
-        let home = FileManager.default.homeDirectoryForCurrentUser
-        let omniwmSettings = home
-            .appendingPathComponent(".config/omniwm/settings.toml")
-
-        guard FileManager.default.fileExists(atPath: omniwmSettings.path),
-              let content = try? String(contentsOf: omniwmSettings, encoding: .utf8)
-        else { return }
-
-        // Strip [dwindle] section and monitorDwindleOverrides
-        let lines = content.components(separatedBy: "\n")
-        var result: [String] = []
-        var skipSection = false
-        for line in lines {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            if trimmed == "[dwindle]" {
-                skipSection = true
-                continue
-            }
-            if skipSection {
-                if trimmed.hasPrefix("[") && !trimmed.hasPrefix("[dwindle") {
-                    skipSection = false
-                } else {
-                    continue
-                }
-            }
-            if trimmed.hasPrefix("monitorDwindleOverrides") {
-                continue
-            }
-            // Strip updateChecksEnabled since we removed updates
-            if trimmed.hasPrefix("updateChecksEnabled") {
-                continue
-            }
-            result.append(line)
-        }
-
-        let migrated = result.joined(separator: "\n")
-            .replacingOccurrences(of: "Hyper+", with: "Modifier+")
-            .replacingOccurrences(of: "\"Hyper\"", with: "\"Modifier\"")
-        do {
-            try FileManager.default.createDirectory(at: nehirConfigDir, withIntermediateDirectories: true)
-            try migrated.write(to: nehirSettings, atomically: true, encoding: .utf8)
-            NSLog("Nehir: Migrated settings from ~/.config/omniwm/settings.toml")
-        } catch {
-            NSLog("Nehir: Failed to migrate OmniWM settings: \(error.localizedDescription)")
-        }
     }
 }

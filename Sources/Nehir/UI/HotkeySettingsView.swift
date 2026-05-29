@@ -89,13 +89,6 @@ enum HotkeySettingsDisplayModel {
             return "Unassigned"
         case let .chord(binding):
             return displayString(for: binding)
-        case let .sequence(steps):
-            return steps.map { step in
-                switch step {
-                case .leader: "Leader"
-                case let .chord(b): displayString(for: b)
-                }
-            }.joined(separator: ", ")
         }
     }
 
@@ -116,13 +109,6 @@ enum HotkeySettingsDisplayModel {
             return "Unassigned"
         case let .chord(binding):
             return humanReadableString(for: binding)
-        case let .sequence(steps):
-            return steps.map { step in
-                switch step {
-                case .leader: "Leader"
-                case let .chord(b): humanReadableString(for: b)
-                }
-            }.joined(separator: ", ")
         }
     }
 }
@@ -423,20 +409,10 @@ private struct HotkeyBindingRow: View {
         switch reason {
         case .duplicateBinding:
             return "Failed to register: this key combination is already assigned to another Nehir command"
-        case .duplicateSequence:
-            return "Failed to register: duplicate sequence"
-        case .prefixAmbiguity:
-            return "Failed to register: sequence prefix conflict"
-        case .invalidSequenceRoot:
-            return "Failed to register: invalid sequence root"
-        case .sequenceRootConflict:
-            return "Failed to register: sequence root conflict"
         case .modifierLeaderConflict:
             return "Failed to register: conflicts with Nehir modifier"
         case .unsupportedModifierKeys:
             return "Failed to register: Nehir modifier cannot reuse its trigger modifier"
-        case .unsupportedSequenceModifierStep:
-            return "Failed to register: unsupported sequence step"
         case .eventTapUnavailable:
             return "Failed to register: modifier capture unavailable"
         case .systemReserved:

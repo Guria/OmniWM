@@ -4,7 +4,6 @@ import Foundation
 
 enum HotkeyRegistrationAction: Equatable {
     case command(HotkeyCommand)
-    case sequencePrefix(KeyBinding)
 }
 
 struct HotkeyPlannedRegistration: Equatable {
@@ -24,46 +23,28 @@ struct HotkeyPlannedRegistration: Equatable {
 
 enum HotkeyRegistrationFailureReason: Equatable {
     case duplicateBinding
-    case duplicateSequence
-    case prefixAmbiguity
-    case invalidSequenceRoot
-    case sequenceRootConflict
     case modifierLeaderConflict
     case unsupportedModifierKeys
-    case unsupportedSequenceModifierStep
     case eventTapUnavailable
     case systemReserved
-}
-
-struct HotkeySequenceNode: Equatable {
-    var children: [KeyBinding: Int] = [:]
-    var command: HotkeyCommand?
 }
 
 struct HotkeyRegistrationPlan: Equatable {
     let registrations: [HotkeyPlannedRegistration]
     let virtualModifierRegistrations: [HotkeyPlannedRegistration]
     var failures: [HotkeyCommand: HotkeyRegistrationFailureReason]
-    let sequenceNodes: [HotkeySequenceNode]
-    let sequenceCommands: Set<HotkeyCommand>
 }
 
 struct HotkeyRuntimeConfiguration: Equatable {
     let bindings: [HotkeyBinding]
     let modifierTrigger: ModifierKeyTrigger
-    let leaderKey: KeyBinding
-    let sequenceTimeoutMilliseconds: Int
 
     init(
         bindings: [HotkeyBinding] = [],
-        modifierTrigger: ModifierKeyTrigger = .default,
-        leaderKey: KeyBinding = .defaultLeader,
-        sequenceTimeoutMilliseconds: Int = 800
+        modifierTrigger: ModifierKeyTrigger = .default
     ) {
         self.bindings = bindings
         self.modifierTrigger = modifierTrigger
-        self.leaderKey = leaderKey.isUnassigned ? .defaultLeader : leaderKey
-        self.sequenceTimeoutMilliseconds = max(100, sequenceTimeoutMilliseconds)
     }
 }
 
@@ -216,7 +197,6 @@ struct VirtualModifierEventState: Equatable {
         keyCode: UInt32,
         isAutorepeat: Bool,
         trigger: ModifierKeyTrigger,
-        sequenceIsActive: Bool,
         action: HotkeyRegistrationAction?
     ) -> VirtualModifierKeyDownDecision {
         if handleTriggerKeyDown(keyCode, trigger: trigger) {
@@ -224,9 +204,6 @@ struct VirtualModifierEventState: Equatable {
         }
         guard isActive else {
             return consumedKeyCodes.contains(keyCode) ? .suppress : .passThrough
-        }
-        guard !sequenceIsActive else {
-            return .passThrough
         }
 
         guard let action else {
@@ -258,8 +235,6 @@ struct VirtualModifierEventState: Equatable {
 @MainActor
 final class HotkeyCenter {
     var onCommand: ((HotkeyCommand) -> Void)?
-    var sequenceEventAccessProvider: () -> Bool = { HotkeyCenter.sequenceEventAccessGranted() }
-    var sequenceTapSetupOverride: (() -> Bool)?
     var virtualModifierTapSetupOverride: (() -> Bool)?
 
     private var refs: [EventHotKeyRef?] = []
@@ -268,24 +243,17 @@ final class HotkeyCenter {
     private var idToAction: [UInt32: HotkeyRegistrationAction] = [:]
 
     private var configuration = HotkeyRuntimeConfiguration()
-    private var sequenceNodes: [HotkeySequenceNode] = []
-    private var activeSequenceNode: Int?
-    private var consumedSequenceKeyCodes = SmallValueSet<UInt32>()
-    private var sequenceTimeoutWorkItem: DispatchWorkItem?
-    private var sequenceTap: CFMachPort?
-    private var sequenceRunLoopSource: CFRunLoopSource?
-    private var pendingSequenceCommands: [HotkeyCommand] = []
-    private var pendingSequenceDrainScheduled = false
     private var virtualModifierRegistrations: [KeyBinding: HotkeyRegistrationAction] = [:]
     private var virtualModifierTap: CFMachPort?
     private var virtualModifierRunLoopSource: CFRunLoopSource?
     private var virtualModifierState = VirtualModifierEventState()
+    private var pendingCommands: [HotkeyCommand] = []
+    private var pendingDrainScheduled = false
 
     private(set) var registrationFailures: [HotkeyCommand: HotkeyRegistrationFailureReason] = [:]
 
     deinit {
         MainActor.assumeIsolated {
-            stopSequenceTap()
             stopVirtualModifierTap()
         }
     }
@@ -332,15 +300,11 @@ final class HotkeyCenter {
     func updateBindings(
         _ newBindings: [HotkeyBinding],
         modifierTrigger newModifierTrigger: ModifierKeyTrigger = .default,
-        leaderKey newLeaderKey: KeyBinding = .defaultLeader,
-        sequenceTimeoutMilliseconds newSequenceTimeoutMilliseconds: Int = 800,
         force: Bool = false
     ) {
         let nextConfiguration = HotkeyRuntimeConfiguration(
             bindings: newBindings,
-            modifierTrigger: newModifierTrigger,
-            leaderKey: newLeaderKey,
-            sequenceTimeoutMilliseconds: newSequenceTimeoutMilliseconds
+            modifierTrigger: newModifierTrigger
         )
         guard force || nextConfiguration != configuration else { return }
         configuration = nextConfiguration
@@ -350,46 +314,28 @@ final class HotkeyCenter {
     }
 
     private func unregisterAll() {
-        cancelActiveSequence()
         for ref in refs {
             if let ref { UnregisterEventHotKey(ref) }
         }
         refs.removeAll()
         idToAction.removeAll()
-        sequenceNodes.removeAll()
-        pendingSequenceCommands.removeAll()
-        pendingSequenceDrainScheduled = false
+        pendingCommands.removeAll()
+        pendingDrainScheduled = false
         virtualModifierRegistrations.removeAll()
-        stopSequenceTap()
         stopVirtualModifierTap()
     }
 
     private func registerHotkeys() {
         unregisterAll()
-        var plan = Self.registrationPlan(
+        let plan = Self.registrationPlan(
             for: configuration.bindings,
-            modifierTrigger: configuration.modifierTrigger,
-            leaderKey: configuration.leaderKey,
-            sequenceEventAccessGranted: sequenceEventAccessProvider()
+            modifierTrigger: configuration.modifierTrigger
         )
-        sequenceNodes = plan.sequenceNodes
         virtualModifierRegistrations = Dictionary(
             plan.virtualModifierRegistrations.map { ($0.binding, $0.action) },
             uniquingKeysWith: { first, _ in first }
         )
         var virtualModifierUnavailableActions: [HotkeyRegistrationAction] = []
-        if !plan.sequenceCommands.isEmpty, !setupSequenceTapIfNeeded() {
-            for command in plan.sequenceCommands {
-                plan.failures[command] = .eventTapUnavailable
-            }
-            sequenceNodes.removeAll()
-            virtualModifierRegistrations = virtualModifierRegistrations.filter { _, action in
-                if case .sequencePrefix = action {
-                    return false
-                }
-                return true
-            }
-        }
         if !virtualModifierRegistrations.isEmpty, configuration.modifierTrigger.requiresEventTap, !setupVirtualModifierTapIfNeeded() {
             virtualModifierUnavailableActions = Array(virtualModifierRegistrations.values)
             virtualModifierRegistrations.removeAll()
@@ -429,9 +375,6 @@ final class HotkeyCenter {
         switch action {
         case let .command(command):
             return registrationFailures[command].map { [$0] } ?? []
-        case let .sequencePrefix(root):
-            guard let rootNode = sequenceNodes.first?.children[root] else { return [.invalidSequenceRoot] }
-            return sequenceCommands(from: rootNode).compactMap { registrationFailures[$0] }
         }
     }
 
@@ -439,11 +382,6 @@ final class HotkeyCenter {
         switch action {
         case let .command(command):
             registrationFailures[command] = .systemReserved
-        case let .sequencePrefix(root):
-            guard let rootNode = sequenceNodes.first?.children[root] else { return }
-            for command in sequenceCommands(from: rootNode) {
-                registrationFailures[command] = .systemReserved
-            }
         }
     }
 
@@ -453,26 +391,7 @@ final class HotkeyCenter {
             if registrationFailures[command] == nil {
                 registrationFailures[command] = .eventTapUnavailable
             }
-        case let .sequencePrefix(root):
-            guard let rootNode = sequenceNodes.first?.children[root] else { return }
-            for command in sequenceCommands(from: rootNode) where registrationFailures[command] == nil {
-                registrationFailures[command] = .eventTapUnavailable
-            }
         }
-    }
-
-    private func sequenceCommands(from nodeIndex: Int) -> [HotkeyCommand] {
-        guard sequenceNodes.indices.contains(nodeIndex) else { return [] }
-        var commands: [HotkeyCommand] = []
-        var stack = [nodeIndex]
-        while let current = stack.popLast() {
-            guard sequenceNodes.indices.contains(current) else { continue }
-            if let command = sequenceNodes[current].command {
-                commands.append(command)
-            }
-            stack.append(contentsOf: sequenceNodes[current].children.values)
-        }
-        return commands
     }
 
     private func dispatch(id: UInt32) {
@@ -480,108 +399,6 @@ final class HotkeyCenter {
         switch action {
         case let .command(command):
             onCommand?(command)
-        case let .sequencePrefix(root):
-            activateSequence(root: root)
-        }
-    }
-
-    private func activateSequence(root: KeyBinding, suppressRootKeyUp: Bool = true) {
-        guard let nextNode = sequenceNodes.first?.children[root],
-              sequenceTap != nil
-        else { return }
-        activeSequenceNode = nextNode
-        consumedSequenceKeyCodes.reserveCapacity(4)
-        if suppressRootKeyUp {
-            consumedSequenceKeyCodes.insert(root.keyCode)
-        }
-        if let tap = sequenceTap {
-            CGEvent.tapEnable(tap: tap, enable: true)
-        }
-        scheduleSequenceTimeout()
-    }
-
-    private func cancelActiveSequence() {
-        activeSequenceNode = nil
-        sequenceTimeoutWorkItem?.cancel()
-        sequenceTimeoutWorkItem = nil
-        disableSequenceTapIfDrained()
-    }
-
-    private func resetSequenceState() {
-        activeSequenceNode = nil
-        consumedSequenceKeyCodes.removeAll(keepingCapacity: true)
-        sequenceTimeoutWorkItem?.cancel()
-        sequenceTimeoutWorkItem = nil
-        disableSequenceTapIfDrained()
-    }
-
-    private func disableSequenceTapIfDrained() {
-        if activeSequenceNode == nil, consumedSequenceKeyCodes.isEmpty, let tap = sequenceTap {
-            CGEvent.tapEnable(tap: tap, enable: false)
-        }
-    }
-
-    private func finishActiveSequence() {
-        activeSequenceNode = nil
-        sequenceTimeoutWorkItem?.cancel()
-        sequenceTimeoutWorkItem = nil
-        disableSequenceTapIfDrained()
-    }
-
-    private func scheduleSequenceTimeout() {
-        sequenceTimeoutWorkItem?.cancel()
-        let item = DispatchWorkItem { [weak self] in
-            self?.cancelActiveSequence()
-        }
-        sequenceTimeoutWorkItem = item
-        DispatchQueue.main.asyncAfter(
-            deadline: .now() + .milliseconds(configuration.sequenceTimeoutMilliseconds),
-            execute: item
-        )
-    }
-
-    private func setupSequenceTapIfNeeded() -> Bool {
-        if sequenceTap != nil { return true }
-        if let sequenceTapSetupOverride {
-            return sequenceTapSetupOverride()
-        }
-        let eventMask = (1 << CGEventType.keyDown.rawValue) | (1 << CGEventType.keyUp.rawValue)
-        let callback: CGEventTapCallBack = { _, type, event, userInfo in
-            guard let userInfo else { return Unmanaged.passUnretained(event) }
-            let center = Unmanaged<HotkeyCenter>.fromOpaque(userInfo).takeUnretainedValue()
-            return MainActor.assumeIsolated {
-                center.handleSequenceEvent(type: type, event: event)
-            }
-        }
-        let selfPtr = Unmanaged.passUnretained(self).toOpaque()
-        sequenceTap = CGEvent.tapCreate(
-            tap: .cgSessionEventTap,
-            place: .headInsertEventTap,
-            options: .defaultTap,
-            eventsOfInterest: CGEventMask(eventMask),
-            callback: callback,
-            userInfo: selfPtr
-        )
-        guard let tap = sequenceTap else { return false }
-        sequenceRunLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
-        guard let source = sequenceRunLoopSource else {
-            sequenceTap = nil
-            return false
-        }
-        CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
-        CGEvent.tapEnable(tap: tap, enable: false)
-        return true
-    }
-
-    private func stopSequenceTap() {
-        resetSequenceState()
-        if let source = sequenceRunLoopSource {
-            CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes)
-            sequenceRunLoopSource = nil
-        }
-        if let tap = sequenceTap {
-            CGEvent.tapEnable(tap: tap, enable: false)
-            sequenceTap = nil
         }
     }
 
@@ -635,85 +452,6 @@ final class HotkeyCenter {
         }
     }
 
-    private func handleSequenceEvent(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
-        switch type {
-        case .tapDisabledByTimeout:
-            if (activeSequenceNode != nil || !consumedSequenceKeyCodes.isEmpty), let tap = sequenceTap {
-                CGEvent.tapEnable(tap: tap, enable: true)
-            }
-            return Unmanaged.passUnretained(event)
-        case .tapDisabledByUserInput:
-            cancelActiveSequence()
-            return Unmanaged.passUnretained(event)
-        case .keyDown:
-            return handleSequenceKeyDown(event)
-        case .keyUp:
-            return handleSequenceKeyUp(event)
-        default:
-            return Unmanaged.passUnretained(event)
-        }
-    }
-
-    private func handleSequenceKeyDown(_ event: CGEvent) -> Unmanaged<CGEvent>? {
-        let keyCode = UInt32(event.getIntegerValueField(.keyboardEventKeycode))
-        guard let activeSequenceNode else {
-            return consumedSequenceKeyCodes.contains(keyCode) ? nil : Unmanaged.passUnretained(event)
-        }
-        if event.getIntegerValueField(.keyboardEventAutorepeat) != 0 {
-            return consumedSequenceKeyCodes.contains(keyCode) ? nil : Unmanaged.passUnretained(event)
-        }
-        let binding = KeyBinding(keyCode: keyCode, modifiers: matchingModifiers(from: event.flags))
-        if binding.keyCode == UInt32(kVK_Escape) {
-            consumedSequenceKeyCodes.insert(binding.keyCode)
-            cancelActiveSequence()
-            return nil
-        }
-        guard sequenceNodes.indices.contains(activeSequenceNode),
-              let nextNode = sequenceNodes[activeSequenceNode].children[binding]
-        else {
-            cancelActiveSequence()
-            return Unmanaged.passUnretained(event)
-        }
-        self.activeSequenceNode = nextNode
-        consumedSequenceKeyCodes.insert(binding.keyCode)
-        if let command = sequenceNodes[nextNode].command {
-            finishActiveSequence()
-            dispatchSequenceCommandLater(command)
-        } else {
-            scheduleSequenceTimeout()
-        }
-        return nil
-    }
-
-    private func dispatchSequenceCommandLater(_ command: HotkeyCommand) {
-        pendingSequenceCommands.append(command)
-        guard !pendingSequenceDrainScheduled else { return }
-        pendingSequenceDrainScheduled = true
-        DispatchQueue.main.async { [weak self] in
-            self?.drainPendingSequenceCommands()
-        }
-    }
-
-    private func drainPendingSequenceCommands() {
-        pendingSequenceDrainScheduled = false
-        var index = 0
-        while index < pendingSequenceCommands.count {
-            let command = pendingSequenceCommands[index]
-            index += 1
-            onCommand?(command)
-        }
-        pendingSequenceCommands.removeAll(keepingCapacity: true)
-    }
-
-    private func handleSequenceKeyUp(_ event: CGEvent) -> Unmanaged<CGEvent>? {
-        let keyCode = UInt32(event.getIntegerValueField(.keyboardEventKeycode))
-        guard consumedSequenceKeyCodes.remove(keyCode) != nil else {
-            return Unmanaged.passUnretained(event)
-        }
-        disableSequenceTapIfDrained()
-        return nil
-    }
-
     private func handleVirtualModifierEvent(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
         switch type {
         case .tapDisabledByTimeout:
@@ -758,7 +496,7 @@ final class HotkeyCenter {
         let keyCode = UInt32(event.getIntegerValueField(.keyboardEventKeycode))
         let modifiers = matchingModifiers(from: event.flags)
         let action: HotkeyRegistrationAction?
-        if virtualModifierState.isActive, activeSequenceNode == nil {
+        if virtualModifierState.isActive {
             action = virtualModifierRegistrations[
                 KeyBinding(keyCode: keyCode, modifiers: modifiers, usesModifier: true)
             ]
@@ -769,7 +507,6 @@ final class HotkeyCenter {
             keyCode: keyCode,
             isAutorepeat: event.getIntegerValueField(.keyboardEventAutorepeat) != 0,
             trigger: configuration.modifierTrigger,
-            sequenceIsActive: activeSequenceNode != nil,
             action: action
         )
         switch decision {
@@ -778,7 +515,7 @@ final class HotkeyCenter {
         case .suppress:
             return nil
         case let .dispatch(action):
-            dispatchVirtualModifierActionLater(action)
+            dispatchCommandLater(action)
             return nil
         }
     }
@@ -798,13 +535,27 @@ final class HotkeyCenter {
         return nil
     }
 
-    private func dispatchVirtualModifierActionLater(_ action: HotkeyRegistrationAction) {
+    private func dispatchCommandLater(_ action: HotkeyRegistrationAction) {
         switch action {
         case let .command(command):
-            dispatchSequenceCommandLater(command)
-        case let .sequencePrefix(root):
-            activateSequence(root: root, suppressRootKeyUp: false)
+            pendingCommands.append(command)
+            guard !pendingDrainScheduled else { return }
+            pendingDrainScheduled = true
+            DispatchQueue.main.async { [weak self] in
+                self?.drainPendingCommands()
+            }
         }
+    }
+
+    private func drainPendingCommands() {
+        pendingDrainScheduled = false
+        var index = 0
+        while index < pendingCommands.count {
+            let command = pendingCommands[index]
+            index += 1
+            onCommand?(command)
+        }
+        pendingCommands.removeAll(keepingCapacity: true)
     }
 
     private func matchingModifiers(from flags: CGEventFlags) -> UInt32 {
@@ -826,60 +577,39 @@ extension HotkeyCenter {
     func prepareVirtualModifierForTesting(
         modifierTrigger: ModifierKeyTrigger,
         registrations: [KeyBinding: HotkeyRegistrationAction],
-        isActive: Bool = false,
-        sequenceIsActive: Bool = false
+        isActive: Bool = false
     ) {
         configuration = HotkeyRuntimeConfiguration(
             bindings: configuration.bindings,
-            modifierTrigger: modifierTrigger,
-            leaderKey: configuration.leaderKey,
-            sequenceTimeoutMilliseconds: configuration.sequenceTimeoutMilliseconds
+            modifierTrigger: modifierTrigger
         )
         virtualModifierRegistrations = registrations
         virtualModifierState.reset()
         virtualModifierState.isActive = isActive
-        activeSequenceNode = sequenceIsActive ? 0 : nil
     }
 
     func handleVirtualModifierEventForTesting(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
         handleVirtualModifierEvent(type: type, event: event)
     }
 
-    func drainPendingSequenceCommandsForTesting() {
-        drainPendingSequenceCommands()
+    func drainPendingCommandsForTesting() {
+        drainPendingCommands()
     }
 }
 #endif
 
 extension HotkeyCenter {
-    nonisolated static func sequenceEventAccessGranted() -> Bool {
-        CGPreflightListenEventAccess()
-    }
-
-    @discardableResult
-    nonisolated static func requestSequenceEventAccess() -> Bool {
-        CGRequestListenEventAccess()
-    }
-
     nonisolated static func registrationPlan(
         for bindings: [HotkeyBinding],
-        modifierTrigger: ModifierKeyTrigger = .default,
-        leaderKey: KeyBinding = .defaultLeader,
-        sequenceEventAccessGranted: Bool = true
+        modifierTrigger: ModifierKeyTrigger = .default
     ) -> HotkeyRegistrationPlan {
         struct DirectCandidate {
             let command: HotkeyCommand
             let binding: KeyBinding
         }
 
-        struct SequenceCandidate {
-            let command: HotkeyCommand
-            let resolved: [KeyBinding]
-        }
-
         var directOwners: [KeyBinding: [HotkeyCommand]] = [:]
         var directCandidates: [DirectCandidate] = []
-        var sequenceCandidates: [SequenceCandidate] = []
         var failures: [HotkeyCommand: HotkeyRegistrationFailureReason] = [:]
 
         func mark(_ command: HotkeyCommand, _ reason: HotkeyRegistrationFailureReason) {
@@ -905,17 +635,6 @@ extension HotkeyCenter {
                 guard !keyBinding.isUnassigned else { continue }
                 directOwners[keyBinding, default: []].append(binding.command)
                 directCandidates.append(DirectCandidate(command: binding.command, binding: keyBinding))
-            case .sequence:
-                guard let resolved = binding.binding.resolvedSequence(leaderKey: leaderKey),
-                      resolved.count >= 2,
-                      let root = resolved.first,
-                      !root.isUnassigned,
-                      !root.isBarePrintableRoot
-                else {
-                    mark(binding.command, .invalidSequenceRoot)
-                    continue
-                }
-                sequenceCandidates.append(SequenceCandidate(command: binding.command, resolved: resolved))
             }
         }
 
@@ -932,46 +651,6 @@ extension HotkeyCenter {
                 guard lhs.binding.conflicts(with: rhs.binding, modifierTrigger: modifierTrigger) else { continue }
                 mark(lhs.command, .duplicateBinding)
                 mark(rhs.command, .duplicateBinding)
-            }
-        }
-
-        for lhsIndex in sequenceCandidates.indices {
-            for rhsIndex in sequenceCandidates.indices where rhsIndex > lhsIndex {
-                let lhs = sequenceCandidates[lhsIndex]
-                let rhs = sequenceCandidates[rhsIndex]
-                if lhs.resolved.conflictsElementwise(with: rhs.resolved, modifierTrigger: modifierTrigger) {
-                    mark(lhs.command, .duplicateSequence)
-                    mark(rhs.command, .duplicateSequence)
-                } else if lhs.resolved.isConflictPrefix(of: rhs.resolved, modifierTrigger: modifierTrigger) ||
-                    rhs.resolved.isConflictPrefix(of: lhs.resolved, modifierTrigger: modifierTrigger)
-                {
-                    mark(lhs.command, .prefixAmbiguity)
-                    mark(rhs.command, .prefixAmbiguity)
-                } else if let lhsRoot = lhs.resolved.first,
-                          let rhsRoot = rhs.resolved.first,
-                          lhsRoot != rhsRoot,
-                          lhsRoot.conflicts(with: rhsRoot, modifierTrigger: modifierTrigger)
-                {
-                    mark(lhs.command, .sequenceRootConflict)
-                    mark(rhs.command, .sequenceRootConflict)
-                }
-            }
-        }
-
-        for candidate in sequenceCandidates {
-            if candidate.resolved.dropFirst().contains(where: \.usesModifier) {
-                mark(candidate.command, .unsupportedSequenceModifierStep)
-            }
-            if candidate.resolved.contains(where: usesUnsupportedModifierCombo) {
-                mark(candidate.command, .unsupportedModifierKeys)
-            }
-            if candidate.resolved.contains(where: { $0.physicalKeyConflicts(with: modifierTrigger) }) {
-                mark(candidate.command, .modifierLeaderConflict)
-            }
-            guard let root = candidate.resolved.first else { continue }
-            for directCandidate in directCandidates where directCandidate.binding.conflicts(with: root, modifierTrigger: modifierTrigger) {
-                mark(candidate.command, .sequenceRootConflict)
-                mark(directCandidate.command, .sequenceRootConflict)
             }
         }
 
@@ -1001,48 +680,10 @@ extension HotkeyCenter {
             }
         }
 
-        var sequenceNodes = [HotkeySequenceNode()]
-        var sequenceCommands: Set<HotkeyCommand> = []
-        var registeredRoots: Set<KeyBinding> = []
-        for candidate in sequenceCandidates where failures[candidate.command] == nil {
-            var nodeIndex = 0
-            for binding in candidate.resolved {
-                if let existing = sequenceNodes[nodeIndex].children[binding] {
-                    nodeIndex = existing
-                } else {
-                    let newIndex = sequenceNodes.count
-                    sequenceNodes.append(HotkeySequenceNode())
-                    sequenceNodes[nodeIndex].children[binding] = newIndex
-                    nodeIndex = newIndex
-                }
-            }
-            sequenceNodes[nodeIndex].command = candidate.command
-            sequenceCommands.insert(candidate.command)
-            if let root = candidate.resolved.first, registeredRoots.insert(root).inserted {
-                let action = HotkeyRegistrationAction.sequencePrefix(root)
-                if root.usesModifier, modifierTrigger.requiresEventTap {
-                    virtualModifierRegistrations.append(HotkeyPlannedRegistration(binding: root, action: action))
-                }
-                let carbonRoot = root.usesModifier && modifierTrigger.requiresEventTap
-                    ? nil
-                    : root.carbonCompatibilityBinding(for: modifierTrigger) ?? (root.usesModifier ? nil : root)
-                if let carbonRoot {
-                    registrations.append(
-                        HotkeyPlannedRegistration(
-                            binding: carbonRoot,
-                            action: action
-                        )
-                    )
-                }
-            }
-        }
-
         return HotkeyRegistrationPlan(
             registrations: registrations,
             virtualModifierRegistrations: virtualModifierRegistrations,
-            failures: failures,
-            sequenceNodes: sequenceNodes,
-            sequenceCommands: sequenceCommands
+            failures: failures
         )
     }
 }
@@ -1051,15 +692,5 @@ private extension KeyBinding {
     func physicalKeyConflicts(with modifierTrigger: ModifierKeyTrigger) -> Bool {
         guard !isUnassigned else { return false }
         return modifierTrigger.matchesPhysicalKeyCode(keyCode)
-    }
-}
-
-private extension Array where Element == KeyBinding {
-    func conflictsElementwise(with other: [KeyBinding], modifierTrigger: ModifierKeyTrigger) -> Bool {
-        count == other.count && zip(self, other).allSatisfy { $0.conflicts(with: $1, modifierTrigger: modifierTrigger) }
-    }
-
-    func isConflictPrefix(of other: [KeyBinding], modifierTrigger: ModifierKeyTrigger) -> Bool {
-        count < other.count && zip(self, other).allSatisfy { $0.conflicts(with: $1, modifierTrigger: modifierTrigger) }
     }
 }

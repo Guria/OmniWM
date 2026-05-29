@@ -639,68 +639,7 @@ struct KeyBindingCodecTests {
         #expect(decoded.modifierTrigger == .key(UInt32(kVK_F18)))
     }
 
-    @Test func legacyWorkspaceDefaultsMigrateToSemanticHyper() throws {
-        var export = SettingsExport.defaults()
-        let legacySwitch = try #require(
-            HotkeyBindingRegistry.makeBinding(
-                id: "switchWorkspace.1",
-                binding: KeyBinding(keyCode: UInt32(kVK_ANSI_2), modifiers: UInt32(optionKey))
-            )
-        )
-        let customFocus = try #require(
-            HotkeyBindingRegistry.makeBinding(
-                id: "focus.left",
-                binding: KeyBinding(keyCode: UInt32(kVK_ANSI_H), modifiers: UInt32(optionKey))
-            )
-        )
-        export.hotkeyBindings = [legacySwitch, customFocus]
-
-        let decoded = try SettingsTOMLCodec.decode(SettingsTOMLCodec.encode(export))
-
-        #expect(
-            decoded.hotkeyBindings.first { $0.id == "switchWorkspace.1" }?.binding ==
-                .chord(KeyBinding(keyCode: UInt32(kVK_ANSI_2), modifiers: 0, usesModifier: true))
-        )
-        #expect(decoded.hotkeyBindings.first { $0.id == "focus.left" }?.binding == customFocus.binding)
-    }
-
-    @Test func sequenceBindingsRoundTripAsReadableStrings() throws {
-        var export = SettingsExport.defaults()
-        let trigger = HotkeyTrigger.sequence([
-            .leader,
-            .chord(KeyBinding(keyCode: UInt32(kVK_ANSI_H), modifiers: 0))
-        ])
-        let hotkey = try #require(HotkeyBindingRegistry.makeBinding(id: "focus.left", trigger: trigger))
-        export.hotkeyBindings = [hotkey]
-
-        let data = try SettingsTOMLCodec.encode(export)
-        let decoded = try SettingsTOMLCodec.decode(data)
-        let output = try #require(String(data: data, encoding: .utf8))
-
-        #expect(output.contains("leaderKey = \"Modifier+Space\""))
-        #expect(output.contains("sequenceTimeoutMilliseconds = 800"))
-        #expect(output.contains("binding = \"Leader, H\""))
-        #expect(decoded.hotkeyBindings == [hotkey])
-    }
-
-    @Test func sequenceBindingsWithCommaStepRoundTripAsReadableStrings() throws {
-        var export = SettingsExport.defaults()
-        let trigger = HotkeyTrigger.sequence([
-            .leader,
-            .chord(KeyBinding(keyCode: UInt32(kVK_ANSI_Comma), modifiers: 0))
-        ])
-        let hotkey = try #require(HotkeyBindingRegistry.makeBinding(id: "focus.left", trigger: trigger))
-        export.hotkeyBindings = [hotkey]
-
-        let data = try SettingsTOMLCodec.encode(export)
-        let decoded = try SettingsTOMLCodec.decode(data)
-        let output = try #require(String(data: data, encoding: .utf8))
-
-        #expect(output.contains("binding = \"Leader, Comma\""))
-        #expect(decoded.hotkeyBindings == [hotkey])
-    }
-
-    @Test func legacyCompactPunctuationBindingsStillDecode() throws {
+    @Test func compactPunctuationBindingsStillDecode() throws {
         #expect(KeySymbolMapper.fromHumanReadable("Option+,") == KeyBinding(keyCode: UInt32(kVK_ANSI_Comma), modifiers: UInt32(optionKey)))
         #expect(KeySymbolMapper.fromHumanReadable("Option+.") == KeyBinding(keyCode: UInt32(kVK_ANSI_Period), modifiers: UInt32(optionKey)))
         #expect(KeySymbolMapper.fromHumanReadable("Option+-") == KeyBinding(keyCode: UInt32(kVK_ANSI_Minus), modifiers: UInt32(optionKey)))
@@ -903,132 +842,16 @@ struct HotkeySurfaceTests {
     }
 }
 
-@MainActor struct SettingsStoreBuiltInDefaultsTests {
-    @Test func settingsStoreBootsWithPromotedDefaultsAndExcludedLocalStateStaysOut() {
-        let settings = SettingsStore(defaults: makeTestDefaults())
-
-        #expect(settings.mouseWarpAxis == .horizontal)
-        #expect(settings.mouseWarpMargin == 1)
-        #expect(settings.niriColumnWidthPresets == BuiltInSettingsDefaults.niriColumnWidthPresets)
-        #expect(settings.gapSize == 16)
-        #expect(settings.outerGapLeft == 0)
-        #expect(settings.outerGapRight == 0)
-        #expect(settings.outerGapTop == 0)
-        #expect(settings.outerGapBottom == 0)
-        #expect(settings.niriAlwaysCenterSingleColumn == false)
-        #expect(settings.niriSingleWindowAspectRatio == .none)
-        #expect(settings.niriDefaultColumnWidth == 0.5)
-        #expect(settings.workspaceConfigurations == BuiltInSettingsDefaults.workspaceConfigurations)
-        #expect(settings.bordersEnabled == true)
-        #expect(settings.borderWidth == 5.0)
-        #expect(settings.borderColorRed == 0.084585202284378935)
-        #expect(settings.borderColorGreen == 1.0)
-        #expect(settings.borderColorBlue == 0.97930003794467602)
-        #expect(settings.hotkeyBindings == HotkeyBindingRegistry.defaults())
-        #expect(settings.modifierTrigger == .default)
-        #expect(settings.leaderKey == KeyBinding.defaultLeader)
-        #expect(settings.sequenceTimeoutMilliseconds == 800)
-        #expect(settings.workspaceBarEnabled == true)
-        #expect(settings.workspaceBarShowFloatingWindows == false)
-        #expect(settings.workspaceBarNotchAware == true)
-        #expect(settings.workspaceBarReserveLayoutSpace == false)
-        #expect(settings.appRules == BuiltInSettingsDefaults.appRules)
-        #expect(settings.mouseWarpMonitorOrder.isEmpty)
-        #expect(settings.preventSleepEnabled == false)
-        #expect(settings.updateChecksEnabled == true)
-        #expect(settings.ipcEnabled == false)
-        #expect(settings.scrollSensitivity == 5.0)
-        #expect(settings.mouseResizeModifierKey == .option)
-        #expect(settings.statusBarShowWorkspaceName == false)
-        #expect(settings.statusBarShowAppNames == false)
-        #expect(settings.statusBarUseWorkspaceId == false)
-        #expect(settings.clipboardHistoryEnabled == false)
-        #expect(settings.clipboardMaxItems == 200)
-        #expect(settings.clipboardMaxItemBytes == 8_388_608)
-        #expect(settings.clipboardMaxTotalBytes == 67_108_864)
-        #expect(settings.hiddenBarIsCollapsed == RuntimeStateStore.defaultHiddenBarIsCollapsed)
-        #expect(settings.quakeTerminalEnabled == true)
-        #expect(settings.quakeTerminalPosition == .center)
-        #expect(settings.quakeTerminalWidthPercent == 50.0)
-        #expect(settings.quakeTerminalHeightPercent == 50.0)
-        #expect(settings.quakeTerminalAutoHide == false)
-        #expect(settings.quakeTerminalMonitorMode == .focusedWindow)
-        #expect(settings.quakeTerminalUseCustomFrame == false)
-        #expect(settings.quakeTerminalCustomFrame == nil)
-        #expect(settings.appearanceMode == .dark)
-    }
-
-    @Test func resetHotkeysRestoresLeaderAndSequenceTimeout() {
-        let settings = SettingsStore(defaults: makeTestDefaults())
-        settings.modifierTrigger = .mouseButton(4)
-        settings.leaderKey = KeyBinding(keyCode: UInt32(kVK_F13), modifiers: 0)
-        settings.sequenceTimeoutMilliseconds = 1500
-        settings.updateBinding(
-            for: "focus.left",
-            newBinding: KeyBinding(keyCode: UInt32(kVK_ANSI_H), modifiers: UInt32(optionKey))
-        )
-
-        settings.resetHotkeysToDefaults()
-
-        #expect(settings.hotkeyBindings == HotkeyBindingRegistry.defaults())
-        #expect(settings.modifierTrigger == .default)
-        #expect(settings.leaderKey == KeyBinding.defaultLeader)
-        #expect(settings.sequenceTimeoutMilliseconds == 800)
-    }
-
-    @Test func capsLockHyperPresetKeepsLeaderOnHyperSpace() {
-        let settings = SettingsStore(defaults: makeTestDefaults())
-        settings.modifierTrigger = .system
-        settings.leaderKey = KeyBinding(keyCode: UInt32(kVK_F13), modifiers: 0)
-
-        settings.applyCapsLockModifierPreset()
-
-        #expect(settings.modifierTrigger == .key(UInt32(kVK_CapsLock)))
-        #expect(settings.leaderKey == KeyBinding.defaultLeader)
-        #expect(!settings.leaderKey(settings.leaderKey, conflictsWith: settings.modifierTrigger))
-    }
-
-    @Test func effectiveLeaderKeyFallsBackToDefaultWhenStoredLeaderIsUnassigned() {
-        let settings = SettingsStore(defaults: makeTestDefaults())
-        let customLeader = KeyBinding(keyCode: UInt32(kVK_F13), modifiers: 0)
-
-        #expect(settings.effectiveLeaderKey == KeyBinding.defaultLeader)
-
-        settings.leaderKey = .unassigned
-        #expect(settings.effectiveLeaderKey == KeyBinding.defaultLeader)
-
-        settings.leaderKey = customLeader
-        #expect(settings.effectiveLeaderKey == customLeader)
-    }
-
-    @Test func sequenceConflictChecksUseEffectiveLeaderWhenStoredLeaderIsUnassigned() {
-        let settings = SettingsStore(defaults: makeTestDefaults())
-        settings.leaderKey = .unassigned
-        settings.updateBinding(for: "focus.left", newBinding: KeyBinding.defaultLeader)
-
-        let conflicts = settings.findConflicts(
-            for: .sequence([
-                .leader,
-                .chord(KeyBinding(keyCode: UInt32(kVK_ANSI_H), modifiers: 0))
-            ]),
-            excluding: "focus.right"
-        )
-
-        #expect(conflicts.map(\.id) == ["focus.left"])
-    }
-
-    @Test func defaultHotkeysDoNotRequireInputMonitoring() {
+@MainActor struct SettingsStoreHotkeyPreflightTests {
+    @Test func defaultHotkeysDoNotRequireEventTap() {
         let settings = SettingsStore(defaults: makeTestDefaults())
         let plan = HotkeyCenter.registrationPlan(
             for: settings.hotkeyBindings,
-            modifierTrigger: settings.modifierTrigger,
-            leaderKey: settings.leaderKey,
-            sequenceEventAccessGranted: false
+            modifierTrigger: settings.modifierTrigger
         )
 
         #expect(settings.hotkeyBindings.allSatisfy { binding in
-            guard case .sequence = binding.binding else { return true }
-            return false
+            binding.binding.isUnassigned || binding.binding.chordBinding != nil
         })
         #expect(plan.virtualModifierRegistrations.isEmpty)
     }
@@ -1042,46 +865,10 @@ struct HotkeySurfaceTests {
 
         let plan = HotkeyCenter.registrationPlan(
             for: settings.hotkeyBindings,
-            modifierTrigger: .key(UInt32(kVK_CapsLock)),
-            leaderKey: KeyBinding.defaultLeader,
-            sequenceEventAccessGranted: true
+            modifierTrigger: .key(UInt32(kVK_CapsLock))
         )
 
         #expect(plan.failures[.focus(.left)] == .modifierLeaderConflict)
-    }
-
-    @Test func leaderRootConflictsFindDirectChordUsingCandidateLeader() {
-        let settings = SettingsStore(defaults: makeTestDefaults())
-        let candidateLeader = KeyBinding(keyCode: UInt32(kVK_F13), modifiers: 0)
-        settings.updateBinding(for: "focus.left", newBinding: candidateLeader)
-        settings.updateTrigger(
-            for: "focus.right",
-            newTrigger: .sequence([
-                .leader,
-                .chord(KeyBinding(keyCode: UInt32(kVK_ANSI_L), modifiers: 0))
-            ])
-        )
-
-        let conflicts = settings.findLeaderRootConflicts(for: candidateLeader)
-
-        #expect(conflicts.map(\.id) == ["focus.left"])
-    }
-
-    @Test func leaderUsingHyperTriggerPhysicalKeyIsReportedAsConflict() {
-        let settings = SettingsStore(defaults: makeTestDefaults())
-        let rawCapsLeader = KeyBinding(keyCode: UInt32(kVK_CapsLock), modifiers: 0)
-        let semanticSpaceLeader = KeyBinding(keyCode: UInt32(kVK_Space), modifiers: 0, usesModifier: true)
-
-        #expect(settings.leaderKey(rawCapsLeader, conflictsWith: .key(UInt32(kVK_CapsLock))))
-        #expect(settings.leaderKey(semanticSpaceLeader, conflictsWith: .key(UInt32(kVK_Space))))
-        #expect(settings.leaderKey(
-            KeyBinding(keyCode: UInt32(kVK_RightOption), modifiers: 0),
-            conflictsWith: .modifier(UInt32(optionKey))
-        ))
-        #expect(!settings.leaderKey(
-            KeyBinding(keyCode: UInt32(kVK_ANSI_S), modifiers: 0, usesModifier: true),
-            conflictsWith: .key(UInt32(kVK_CapsLock))
-        ))
     }
 }
 

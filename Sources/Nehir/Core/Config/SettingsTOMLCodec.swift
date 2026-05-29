@@ -1,7 +1,7 @@
 import Foundation
 import TOML
 
-// Only file in OmniWM that imports TOML — keep this boundary so swift-toml stays swappable.
+// Only file in Nehir that imports TOML — keep this boundary so swift-toml stays swappable.
 enum SettingsTOMLCodec {
     static func encode(_ export: SettingsExport) throws -> Data {
         let canonical = CanonicalTOMLConfig(export: export)

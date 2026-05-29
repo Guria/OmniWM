@@ -150,18 +150,6 @@ final class SettingsStore {
         didSet { scheduleSave() }
     }
 
-    var leaderKey = SettingsStore.defaultExport.leaderKey {
-        didSet { scheduleSave() }
-    }
-
-    var sequenceTimeoutMilliseconds = SettingsStore.defaultExport.sequenceTimeoutMilliseconds {
-        didSet { scheduleSave() }
-    }
-
-    var effectiveLeaderKey: KeyBinding {
-        leaderKey.isUnassigned ? KeyBinding.defaultLeader : leaderKey
-    }
-
     var workspaceBarEnabled = SettingsStore.defaultExport.workspaceBarEnabled {
         didSet { scheduleSave() }
     }
@@ -499,8 +487,6 @@ final class SettingsStore {
             borderColorAlpha: borderColorAlpha,
             hotkeyBindings: hotkeyBindings,
             modifierTrigger: modifierTrigger,
-            leaderKey: leaderKey,
-            sequenceTimeoutMilliseconds: sequenceTimeoutMilliseconds,
             workspaceBarEnabled: workspaceBarEnabled,
             workspaceBarShowLabels: workspaceBarShowLabels,
             workspaceBarShowFloatingWindows: workspaceBarShowFloatingWindows,
@@ -594,8 +580,6 @@ final class SettingsStore {
 
         hotkeyBindings = export.hotkeyBindings
         modifierTrigger = export.modifierTrigger
-        leaderKey = export.leaderKey
-        sequenceTimeoutMilliseconds = max(100, export.sequenceTimeoutMilliseconds)
 
         workspaceBarEnabled = export.workspaceBarEnabled
         workspaceBarShowLabels = export.workspaceBarShowLabels
@@ -677,13 +661,10 @@ final class SettingsStore {
     func resetHotkeysToDefaults() {
         hotkeyBindings = HotkeyBindingRegistry.defaults()
         modifierTrigger = SettingsStore.defaultExport.modifierTrigger
-        leaderKey = SettingsStore.defaultExport.leaderKey
-        sequenceTimeoutMilliseconds = SettingsStore.defaultExport.sequenceTimeoutMilliseconds
     }
 
     func applyCapsLockModifierPreset() {
         modifierTrigger = .key(UInt32(kVK_CapsLock))
-        leaderKey = KeyBinding.defaultLeader
     }
 
     func hotkeyBindings(applyingPreset mappings: [(id: String, trigger: HotkeyTrigger)]) -> [HotkeyBinding] {
@@ -692,7 +673,6 @@ final class SettingsStore {
             for index in proposed.indices where proposed[index].id != mapping.id &&
                 proposed[index].binding.conflicts(
                     with: mapping.trigger,
-                    leaderKey: effectiveLeaderKey,
                     modifierTrigger: modifierTrigger
                 )
             {
@@ -743,26 +723,8 @@ final class SettingsStore {
     func findConflicts(for trigger: HotkeyTrigger, excluding commandId: String) -> [HotkeyBinding] {
         hotkeyBindings.filter { hotkeyBinding in
             hotkeyBinding.id != commandId &&
-                hotkeyBinding.binding.conflicts(with: trigger, leaderKey: effectiveLeaderKey, modifierTrigger: modifierTrigger)
+                hotkeyBinding.binding.conflicts(with: trigger, modifierTrigger: modifierTrigger)
         }
-    }
-
-    func findLeaderRootConflicts(for newLeaderKey: KeyBinding) -> [HotkeyBinding] {
-        let resolvedLeader = newLeaderKey.isUnassigned ? KeyBinding.defaultLeader : newLeaderKey
-        let hasLeaderSequence = hotkeyBindings.contains { binding in
-            guard case let .sequence(steps) = binding.binding else { return false }
-            return steps.first == .leader
-        }
-        guard hasLeaderSequence else { return [] }
-        return hotkeyBindings.filter {
-            $0.binding.chordBinding?.conflicts(with: resolvedLeader, modifierTrigger: modifierTrigger) == true
-        }
-    }
-
-    func leaderKey(_ key: KeyBinding, conflictsWith modifierTrigger: ModifierKeyTrigger) -> Bool {
-        let resolvedLeader = key.isUnassigned ? KeyBinding.defaultLeader : key
-        guard !resolvedLeader.isUnassigned else { return false }
-        return modifierTrigger.matchesPhysicalKeyCode(resolvedLeader.keyCode)
     }
 
     func configuredWorkspaceNames() -> [String] {

@@ -661,8 +661,6 @@ final class WMController {
         hotkeys.updateBindings(
             bindings,
             modifierTrigger: settings.modifierTrigger,
-            leaderKey: settings.effectiveLeaderKey,
-            sequenceTimeoutMilliseconds: settings.sequenceTimeoutMilliseconds,
             force: force
         )
     }

@@ -77,10 +77,9 @@ Sources/
 │   │   ├── Animation/               Spring, cubic & workspace-switch animations (6 files)
 │   │   ├── Ax/                      Accessibility wrappers, DefaultFloatingApps (10 files)
 │   │   ├── Border/                  Focused window border rendering (3 files)
-│   │   ├── Config/                  Settings store, migrations, export, per-monitor settings (16 files)
+│   │   ├── Config/                  Settings store, export, per-monitor settings (16 files)
 │   │   ├── Controller/              WMController, event handlers, refresh pipeline (17 files)
-│   │   ├── Input/                   Hotkey action catalog, binding persistence,
-│   │   │                            and secure input monitoring (7 files)
+│   │   ├── Input/                   Hotkey action catalog, binding persistence (7 files)
 │   │   ├── Layout/
 │   │   │   ├── DNode.swift          Shared types: WindowToken, WindowHandle
 │   │   │   ├── LayoutBoundary.swift Layout snapshots & workspace geometry
@@ -576,9 +575,9 @@ Focus management is complex because Nehir must coordinate its intent with what m
 
 **Hotkeys** (`Sources/Nehir/Core/Input/`)
 
-`ActionCatalog` is the source of truth for the 67 hotkey-triggerable actions. It defines each action's title, category, layout compatibility, search terms, default and alternate bindings, and optional IPC command linkage. `HotkeyBinding` persists a `bindings` array per action, and `HotkeyBindingRegistry` canonicalizes both legacy single-binding payloads and newer multi-binding settings data.
+`ActionCatalog` is the source of truth for the 67 hotkey-triggerable actions. It defines each action's title, category, layout compatibility, search terms, default and alternate bindings, and optional IPC command linkage. `HotkeyBinding` persists a single binding per action, and `HotkeyBindingRegistry` canonicalizes settings data.
 
-`HotkeyCenter` flattens those action bindings and registers each key+modifiers combination via Carbon's `RegisterEventHotKey` API, so a single action can be triggered by multiple shortcuts. Actions are still tagged with layout compatibility:
+`HotkeyCenter` registers each key+modifiers combination via Carbon's `RegisterEventHotKey` API. Actions are still tagged with layout compatibility:
 
 - `.shared` — works with any layout (focus, move, workspace switch, float, scratchpad, UI toggles)
 - `.niri` — Niri-only (moveColumn, toggleColumnTabbed, focusPrevious, cycleColumnWidth)
@@ -754,7 +753,7 @@ Nehir utility windows such as Settings and App Rules still register through `Own
 
 ### 5.1 Hotkey Command Flow
 
-User presses a hotkey (e.g., Hyper+Left to focus left):
+User presses a hotkey (e.g., Modifier+Left to focus left):
 
 ```
 Carbon EventHandler callback

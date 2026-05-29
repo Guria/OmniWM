@@ -1,9 +1,9 @@
 [tasks."test"]
 description = "Run tests (requires Xcode, not just CommandLineTools)"
 run = """
-echo "Tests use Swift Testing framework which requires Xcode."
-echo "Run with: xcodebuild test -scheme Nehir"
-echo "Or open in Xcode and run tests from there."
+# Kill any running Nehir instances to avoid port/state conflicts
+pkill -x Nehir 2>/dev/null || true
+sleep 0.5
 swift test
 """
 

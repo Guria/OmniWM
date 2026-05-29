@@ -10,7 +10,7 @@ A scrolling tiling window manager for macOS, built on the Niri column layout par
 - **Workspace management** — multiple workspaces with hotkey switching
 - **Window borders** — configurable colored borders on the focused window
 - **Workspace bar** — per-monitor status bar showing workspace names and app icons
-- **Focus follows mouse** — optional X11-style hover focus
+- **Focus follows mouse** — optional hover focus
 - **Multi-monitor support** — seamless window management across displays
 - **Overview mode** — bird's-eye view of all windows
 - **Quake terminal** — drop-down terminal with Ghostty integration
@@ -49,7 +49,9 @@ nehirctl --help
 
 Config file: `~/.config/nehir/settings.toml`
 
-On first launch, settings are migrated from `~/.config/omniwm/settings.toml` if available.
+### Default Modifier
+
+The default modifier key is **⌘⌥ (Cmd+Option)**. Change it in the Nehir menu → Settings → Hotkeys → Nehir Modifier.
 
 ## Development
 
@@ -63,6 +65,9 @@ mise run dev
 # Release build
 mise run build:release
 
+# Run tests (requires Xcode)
+mise run test
+
 # Clean
 mise run clean
 ```
@@ -71,12 +76,16 @@ mise run clean
 
 Nehir is a focused fork of [OmniWM](https://github.com/BarutSRB/OmniWM), stripped down to a single layout engine (Niri scrolling columns) with simplified controls.
 
-**Removed from upstream:**
-- Dwindle (BSP) layout engine
-- Hotkey presets (Vim navigation, Caps Lock modifier)
-- Leader key / sequence hotkey support
-- Update checker
-- Sponsor links
+**Changes from upstream:**
+- Removed Dwindle (BSP) layout engine and all multi-layout switching
+- Removed hotkey presets (Vim navigation, Caps Lock modifier)
+- Removed leader key / sequence hotkey support
+- Removed update checker and update notification window
+- Changed default modifier from Option to Cmd+Option (avoids macOS text editing conflicts)
+- Renamed all internal "Hyper" terminology to "Modifier"
+- Simplified hotkey settings UI
+- Added git commit hash display in debug builds
+- Added mise task configuration for build/dev/test/install
 
 ## License
 

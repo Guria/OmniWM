@@ -95,7 +95,7 @@ private func makeOtherMouseEvent(type: NSEvent.EventType, buttonNumber: Int64) -
         ])
     }
 
-    @Test func sequenceStepModeAllowsBarePrintableKeys() {
+    @Test func bareKeyModeAllowsBarePrintableKeys() {
         let view = KeyRecorderNSView(frame: .zero)
         view.allowsBareKeys = true
         var captured: [KeyBinding] = []

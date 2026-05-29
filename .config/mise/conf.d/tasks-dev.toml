@@ -1,0 +1,9 @@
+[tasks."dev"]
+description = "Build and run Nehir"
+depends = ["build"]
+run = "swift run Nehir"
+
+[tasks."dev:release"]
+description = "Build and run Nehir (release)"
+depends = ["build:release"]
+run = ".build/release/Nehir"

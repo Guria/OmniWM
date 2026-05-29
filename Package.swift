@@ -6,18 +6,18 @@ let packageDirectory = URL(fileURLWithPath: #filePath).deletingLastPathComponent
 let ghosttyMacOSLibraryDirectory = "\(packageDirectory)/Frameworks/GhosttyKit.xcframework/macos-arm64_x86_64"
 
 let package = Package(
-    name: "OmniWM",
+    name: "Nehir",
     platforms: [
         .macOS(.v15)
     ],
     products: [
         .executable(
-            name: "OmniWM",
-            targets: ["OmniWMApp"]
+            name: "Nehir",
+            targets: ["NehirApp"]
         ),
         .executable(
-            name: "omniwmctl",
-            targets: ["OmniWMCtl"]
+            name: "nehirctl",
+            targets: ["NehirCtl"]
         )
     ],
     dependencies: [
@@ -29,20 +29,20 @@ let package = Package(
             path: "Frameworks/GhosttyKit.xcframework"
         ),
         .target(
-            name: "OmniWMIPC",
-            path: "Sources/OmniWMIPC",
+            name: "NehirIPC",
+            path: "Sources/NehirIPC",
             swiftSettings: [
                 .swiftLanguageMode(.v6)
             ]
         ),
         .target(
-            name: "OmniWM",
+            name: "Nehir",
             dependencies: [
                 "GhosttyKit",
-                "OmniWMIPC",
+                "NehirIPC",
                 .product(name: "TOML", package: "swift-toml")
             ],
-            path: "Sources/OmniWM",
+            path: "Sources/Nehir",
             resources: [
                 .process("Resources")
             ],
@@ -65,25 +65,25 @@ let package = Package(
             ]
         ),
         .executableTarget(
-            name: "OmniWMApp",
-            dependencies: ["OmniWM"],
-            path: "Sources/OmniWMApp",
+            name: "NehirApp",
+            dependencies: ["Nehir"],
+            path: "Sources/NehirApp",
             swiftSettings: [
                 .swiftLanguageMode(.v6)
             ]
         ),
         .executableTarget(
-            name: "OmniWMCtl",
-            dependencies: ["OmniWMIPC"],
-            path: "Sources/OmniWMCtl",
+            name: "NehirCtl",
+            dependencies: ["NehirIPC"],
+            path: "Sources/NehirCtl",
             swiftSettings: [
                 .swiftLanguageMode(.v6)
             ]
         ),
         .testTarget(
-            name: "OmniWMTests",
-            dependencies: ["OmniWM", "OmniWMIPC", "OmniWMCtl"],
-            path: "Tests/OmniWMTests",
+            name: "NehirTests",
+            dependencies: ["Nehir", "NehirIPC", "NehirCtl"],
+            path: "Tests/NehirTests",
             resources: [
                 .process("Fixtures")
             ],

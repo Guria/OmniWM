@@ -80,8 +80,6 @@ final class StatusBarMenuBuilder {
 
         menu.addItem(createDivider())
 
-        menu.addItem(createDivider())
-
         addQuitSection(to: menu)
 
         return menu
@@ -437,12 +435,6 @@ final class MenuHeaderView: NSView {
         titleLabel.textColor = .labelColor
         titleLabel.frame = NSRect(x: 56, y: 28, width: 80, height: 18)
         addSubview(titleLabel)
-
-        let statusDot = NSView(frame: NSRect(x: 140, y: 33, width: 6, height: 6))
-        statusDot.wantsLayer = true
-        statusDot.layer?.cornerRadius = 3
-        statusDot.layer?.backgroundColor = NSColor.systemGreen.cgColor
-        addSubview(statusDot)
 
         let versionLabel = NSTextField(labelWithString: "v\(appVersion)")
         versionLabel.font = .monospacedSystemFont(ofSize: 11, weight: .regular)

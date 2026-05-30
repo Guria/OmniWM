@@ -92,6 +92,7 @@ struct WorkspaceBarView: View {
     let onFocusWorkspace: (WorkspaceBarItem) -> Void
     let onFocusWindow: (WindowToken) -> Void
     let onActivateScratchpad: () -> Void
+    let onOpenCommandPalette: () -> Void
 
     var body: some View {
         WorkspaceBarContentView(
@@ -99,7 +100,8 @@ struct WorkspaceBarView: View {
             animationsEnabled: motionPolicy.animationsEnabled,
             onFocusWorkspace: onFocusWorkspace,
             onFocusWindow: onFocusWindow,
-            onActivateScratchpad: onActivateScratchpad
+            onActivateScratchpad: onActivateScratchpad,
+            onOpenCommandPalette: onOpenCommandPalette
         )
     }
 }
@@ -114,7 +116,8 @@ struct WorkspaceBarMeasurementView: View {
             animationsEnabled: false,
             onFocusWorkspace: { _ in },
             onFocusWindow: { _ in },
-            onActivateScratchpad: {}
+            onActivateScratchpad: {},
+            onOpenCommandPalette: {}
         )
         .fixedSize(horizontal: true, vertical: false)
     }
@@ -127,6 +130,7 @@ private struct WorkspaceBarContentView: View {
     let onFocusWorkspace: (WorkspaceBarItem) -> Void
     let onFocusWindow: (WindowToken) -> Void
     let onActivateScratchpad: () -> Void
+    let onOpenCommandPalette: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
     @Environment(\.accessibilityReduceTransparency) private var accessibilityReduceTransparency
@@ -196,6 +200,14 @@ private struct WorkspaceBarContentView: View {
                     onActivateScratchpad: onActivateScratchpad
                 )
             }
+
+            CommandPaletteBarButton(
+                iconSize: iconSize,
+                itemHeight: itemHeight,
+                accentColor: accentColor,
+                textColor: textColor,
+                onOpenCommandPalette: onOpenCommandPalette
+            )
         }
         .padding(.horizontal, 4)
         .frame(height: itemHeight + 4)
@@ -639,6 +651,37 @@ private struct WindowCountBadge: View {
             )
             .frame(minWidth: max(12, iconSize * 0.55), minHeight: max(12, iconSize * 0.55))
             .accessibilityHidden(true)
+    }
+}
+
+@MainActor
+private struct CommandPaletteBarButton: View {
+    let iconSize: CGFloat
+    let itemHeight: CGFloat
+    let accentColor: Color?
+    let textColor: Color?
+    let onOpenCommandPalette: () -> Void
+
+    @State private var isHovered = false
+
+    private var resolvedSecondaryTextColor: Color {
+        textColor ?? .secondary
+    }
+
+    var body: some View {
+        Button(action: onOpenCommandPalette) {
+            Image(systemName: "command")
+                .font(.system(size: max(10, iconSize * 0.7), weight: .medium))
+                .foregroundStyle(isHovered ? (accentColor ?? .accentColor) : resolvedSecondaryTextColor)
+                .frame(width: itemHeight, height: itemHeight)
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            isHovered = hovering
+        }
+        .accessibilityLabel("Command Palette")
+        .help("Open Command Palette")
     }
 }
 

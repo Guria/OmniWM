@@ -219,6 +219,9 @@ final class WorkspaceBarManager {
                 },
                 onActivateScratchpad: { [weak controller] in
                     controller?.activateScratchpadFromBar(on: monitor.id)
+                },
+                onOpenCommandPalette: { [weak controller] in
+                    controller?.openCommandPalette()
                 }
             )
         )

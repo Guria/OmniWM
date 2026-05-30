@@ -27,8 +27,8 @@ private func makeSettingsWorkflowTestStore(directory: URL) -> SettingsStore {
 
 @Suite(.serialized) @MainActor struct SettingsViewTests {
     @Test func settingsFileStatusMessagesMatchWorkflowCopy() {
-        #expect(SettingsFileStatus.revealed.message == "Settings file revealed in Finder")
-        #expect(SettingsFileStatus.opened.message == "Settings file opened")
+        #expect(SettingsFileStatus.revealedConfigFolder.message == "Config folder revealed in Finder")
+        #expect(SettingsFileStatus.openedSettingsFile.message == "settings.toml opened")
     }
 
     @Test func settingsSidebarGroupsCoverEverySectionOnce() {
@@ -38,7 +38,7 @@ private func makeSettingsWorkflowTestStore(directory: URL) -> SettingsStore {
         #expect(Set(groupedSections).count == groupedSections.count)
     }
 
-    @Test func revealActionCreatesCanonicalTomlAndReportsRevealed() throws {
+    @Test func revealActionCreatesSplitConfigAndReportsRevealed() throws {
         let directory = makeSettingsWorkflowTestDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
         let settings = makeSettingsWorkflowTestStore(directory: directory)
@@ -47,15 +47,21 @@ private func makeSettingsWorkflowTestStore(directory: URL) -> SettingsStore {
         var revealedURLs: [[URL]] = []
 
         let status = try SettingsFileWorkflow.perform(
-            .reveal,
+            .revealConfigFolder,
             settings: settings,
             revealFile: { revealedURLs.append($0) }
         )
 
-        #expect(status == .revealed)
+        #expect(status == .revealedConfigFolder)
         #expect(FileManager.default.fileExists(atPath: tomlURL.path) == true)
-        #expect(Set(try FileManager.default.contentsOfDirectory(atPath: directory.path)) == ["settings.toml"])
-        #expect(revealedURLs == [[tomlURL]])
+        #expect(Set(try FileManager.default.contentsOfDirectory(atPath: directory.path)) == [
+            "settings.toml",
+            "hotkeys.toml",
+            "workspaces.toml",
+            "apprules.d",
+            "monitors.d"
+        ])
+        #expect(revealedURLs == [[directory]])
     }
 
     @Test func openActionUsesCanonicalTomlWithInjectedOpenHandler() throws {
@@ -67,7 +73,7 @@ private func makeSettingsWorkflowTestStore(directory: URL) -> SettingsStore {
         var openedURLs: [URL] = []
 
         let status = try SettingsFileWorkflow.perform(
-            .open,
+            .openMainSettingsFile,
             settings: settings,
             openFile: {
                 openedURLs.append($0)
@@ -75,9 +81,8 @@ private func makeSettingsWorkflowTestStore(directory: URL) -> SettingsStore {
             }
         )
 
-        #expect(status == .opened)
+        #expect(status == .openedSettingsFile)
         #expect(FileManager.default.fileExists(atPath: tomlURL.path) == true)
-        #expect(Set(try FileManager.default.contentsOfDirectory(atPath: directory.path)) == ["settings.toml"])
         #expect(openedURLs == [tomlURL])
     }
 
@@ -93,12 +98,12 @@ private func makeSettingsWorkflowTestStore(directory: URL) -> SettingsStore {
         try existingContents.write(to: tomlURL, atomically: true, encoding: .utf8)
 
         let status = try SettingsFileWorkflow.perform(
-            .open,
+            .openMainSettingsFile,
             settings: settings,
             openFile: { _ in true }
         )
 
-        #expect(status == .opened)
+        #expect(status == .openedSettingsFile)
         #expect(try String(contentsOf: tomlURL, encoding: .utf8) == existingContents)
     }
 
@@ -111,12 +116,12 @@ private func makeSettingsWorkflowTestStore(directory: URL) -> SettingsStore {
         try existingContents.write(to: tomlURL, atomically: true, encoding: .utf8)
 
         let status = try SettingsFileWorkflow.perform(
-            .reveal,
+            .revealConfigFolder,
             settings: settings,
             revealFile: { _ in }
         )
 
-        #expect(status == .revealed)
+        #expect(status == .revealedConfigFolder)
         #expect(try String(contentsOf: tomlURL, encoding: .utf8) == existingContents)
     }
 }

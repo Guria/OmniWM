@@ -13,8 +13,6 @@ private func representativeCommandToken(for kind: IPCCommandArgumentKind) -> Str
         "3"
     case .windowIndex:
         "4"
-    case .layout:
-        "niri"
     case .resizeOperation:
         "grow"
     case .sizeChange:
@@ -32,8 +30,6 @@ private func representativeCommandValue(for kind: IPCCommandArgumentKind) -> IPC
         .integer(3)
     case .windowIndex:
         .integer(4)
-    case .layout:
-        .layout(.niri)
     case .resizeOperation:
         .resizeOperation(.grow)
     case .sizeChange:
@@ -227,17 +223,6 @@ private func sampleRuleOptionValue(for flag: String) -> String {
 
         #expect(columnCommand == .setColumnWidth(change: .adjustProportion(10)))
         #expect(heightCommand == .setWindowHeight(change: .setFixed(600)))
-    }
-
-    @Test func parsesSetWorkspaceLayoutDefaultCommand() throws {
-        let parsed = try CLIParser.parse(arguments: ["nehirctl", "command", "set-workspace-layout", "default"])
-
-        guard case let .command(command) = parsed.request.payload else {
-            Issue.record("Expected a command payload")
-            return
-        }
-
-        #expect(command == .setWorkspaceLayout(layout: .defaultLayout))
     }
 
     @Test func parsesWorkspaceCommandsWithHighWorkspaceIds() throws {

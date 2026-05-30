@@ -274,14 +274,14 @@ final class StatusBarMenuBuilder {
         settingsItem.view = settingsRow
         menu.addItem(settingsItem)
 
-        menu.addItem(createSectionLabel("SETTINGS FILE"))
+        menu.addItem(createSectionLabel("CONFIG FILES"))
 
         let revealSettingsFileRow = MenuActionRowView(
             icon: "folder",
-            label: "Reveal Settings File",
+            label: "Reveal Config Folder",
             motionPolicy: motionPolicy
         ) { [weak self] in
-            self?.performSettingsFileAction(.reveal)
+            self?.performSettingsFileAction(.revealConfigFolder)
         }
         let revealSettingsFileItem = NSMenuItem()
         revealSettingsFileItem.view = revealSettingsFileRow
@@ -289,10 +289,10 @@ final class StatusBarMenuBuilder {
 
         let openSettingsFileRow = MenuActionRowView(
             icon: "pencil",
-            label: "Edit Settings File",
+            label: "Edit settings.toml",
             motionPolicy: motionPolicy
         ) { [weak self] in
-            self?.performSettingsFileAction(.open)
+            self?.performSettingsFileAction(.openMainSettingsFile)
         }
         let openSettingsFileItem = NSMenuItem()
         openSettingsFileItem.view = openSettingsFileRow

@@ -846,17 +846,3 @@ private func prepareIPCNiriState(
     }
 }
 
-@Suite struct IPCApplicationBridgeResponseTests {
-    @Test func ignoredLayoutMismatchMapsToStableIgnoredResponse() {
-        let response = IPCApplicationBridge.response(
-            for: .ignoredLayoutMismatch,
-            id: "cmd-1",
-            kind: .command
-        )
-
-        #expect(response.kind == .command)
-        #expect(response.ok == false)
-        #expect(response.status == .ignored)
-        #expect(response.code == .layoutMismatch)
-    }
-}

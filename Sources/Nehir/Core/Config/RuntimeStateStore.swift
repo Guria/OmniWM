@@ -30,8 +30,6 @@ struct RuntimeQuakeTerminalFrame: Codable, Equatable {
 
 struct RuntimeState: Codable, Equatable {
     var windowRestoreCatalog: PersistedWindowRestoreCatalog?
-    var updaterLastCheckedAt: Date?
-    var updaterSkippedReleaseTag: String?
     var commandPaletteLastMode: String?
     var hiddenBarIsCollapsed: Bool?
     var quakeTerminalUseCustomFrame: Bool?
@@ -110,23 +108,6 @@ final class RuntimeStateStore {
         }
     }
 
-    var updaterLastCheckedAt: Date? {
-        get { state.updaterLastCheckedAt }
-        set {
-            guard state.updaterLastCheckedAt != newValue else { return }
-            state.updaterLastCheckedAt = newValue
-            scheduleSave()
-        }
-    }
-
-    var updaterSkippedReleaseTag: String? {
-        get { state.updaterSkippedReleaseTag }
-        set {
-            guard state.updaterSkippedReleaseTag != newValue else { return }
-            state.updaterSkippedReleaseTag = newValue
-            scheduleSave()
-        }
-    }
 
     var commandPaletteLastMode: CommandPaletteMode {
         get {

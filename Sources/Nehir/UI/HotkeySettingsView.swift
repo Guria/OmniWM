@@ -63,8 +63,7 @@ enum HotkeySettingsDisplayModel {
         let normalizedQuery = ActionCatalog.normalizedSearchTerm(query)
         guard !normalizedQuery.isEmpty else { return true }
         let actionTerms = ActionCatalog.spec(for: binding.id)?.searchTerms ?? [
-            binding.command.displayName,
-            binding.command.layoutCompatibility.rawValue
+            binding.command.displayName
         ]
         let searchTerms = actionTerms + [
             displayString(for: binding.binding),

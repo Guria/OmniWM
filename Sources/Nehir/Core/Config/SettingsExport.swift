@@ -33,7 +33,6 @@ struct SettingsExport: Equatable {
     var niriDefaultColumnWidth: Double?
 
     var workspaceConfigurations: [WorkspaceConfiguration]
-    var defaultLayoutType: String
 
     var bordersEnabled: Bool
     var borderWidth: Double
@@ -68,7 +67,6 @@ struct SettingsExport: Equatable {
     var monitorNiriSettings: [MonitorNiriSettings]
 
     var preventSleepEnabled: Bool
-    var updateChecksEnabled: Bool
     var ipcEnabled: Bool
     var scrollGestureEnabled: Bool
     var scrollSensitivity: Double
@@ -125,7 +123,6 @@ extension SettingsExport {
             niriColumnWidthPresets: BuiltInSettingsDefaults.niriColumnWidthPresets,
             niriDefaultColumnWidth: 0.5,
             workspaceConfigurations: BuiltInSettingsDefaults.workspaceConfigurations,
-            defaultLayoutType: LayoutType.niri.rawValue,
             bordersEnabled: true,
             borderWidth: 5.0,
             borderColorRed: 0.084585202284378935,
@@ -155,7 +152,6 @@ extension SettingsExport {
             monitorOrientationSettings: [],
             monitorNiriSettings: [],
             preventSleepEnabled: false,
-            updateChecksEnabled: true,
             ipcEnabled: false,
             scrollGestureEnabled: true,
             scrollSensitivity: 5.0,

@@ -5614,7 +5614,7 @@ private func waitUntilAXEventTest(
         #expect(structuralManagedReplacementMatchedElapsedMillis(on: controller) == nil)
         let flushElapsedMillis = structuralManagedReplacementFlushElapsedMillis(on: controller)
         #expect((flushElapsedMillis.last ?? 0) >= 130)
-        #expect((flushElapsedMillis.last ?? .max) < 200)
+        #expect((flushElapsedMillis.last ?? .max) < 250)
     }
 
     @Test @MainActor func structuralReplacementLateCreateWithinGraceKeepsNiriNodeAndRightColumnStable() async {

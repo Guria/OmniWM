@@ -653,12 +653,6 @@ enum CLIParser {
         return operation
     }
 
-    private static func parseWorkspaceLayout(_ rawValue: String) throws -> IPCWorkspaceLayout {
-        guard let layout = IPCWorkspaceLayout(rawValue: rawValue) else {
-            throw CLIParseError.usage(usageText)
-        }
-        return layout
-    }
 
     private static func parseSizeChange(_ rawValue: String) throws -> IPCSizeChange {
         let trimmed = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -692,8 +686,6 @@ enum CLIParser {
             return .integer(try parseColumnIndex(token))
         case .windowIndex:
             return .integer(try parseWindowIndex(token))
-        case .layout:
-            return .layout(try parseWorkspaceLayout(token))
         case .resizeOperation:
             return .resizeOperation(try parseResizeOperation(token))
         case .sizeChange:

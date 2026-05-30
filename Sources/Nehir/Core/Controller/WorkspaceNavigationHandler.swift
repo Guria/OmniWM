@@ -436,11 +436,6 @@ final class WorkspaceNavigationHandler {
         guard let controller else {
             return WindowTransferResult(succeeded: false, newSourceFocusToken: nil)
         }
-        let sourceLayout: LayoutType = sourceWsId
-            .flatMap { controller.workspaceManager.descriptor(for: $0)?.name }
-            .map { controller.settings.layoutType(for: $0) } ?? .defaultLayout
-        let targetLayout: LayoutType = controller.workspaceManager.descriptor(for: targetWsId)
-            .map { controller.settings.layoutType(for: $0.name) } ?? .defaultLayout
         var newSourceFocusToken: WindowToken?
         var movedWithNiri = false
 

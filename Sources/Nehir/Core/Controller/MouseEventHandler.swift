@@ -1124,16 +1124,12 @@ final class MouseEventHandler {
     private func resolveFocusFollowsMouseTarget(at location: CGPoint) -> FocusFollowsMouseTarget? {
         guard let controller, let workspace = controller.activeWorkspace() else { return nil }
 
-        switch controller.settings.layoutType(for: workspace.name) {
-        case .niri,
-             .defaultLayout:
-            guard let engine = controller.niriEngine,
-                  let window = engine.hitTestFocusableWindow(point: location, in: workspace.id)
-            else {
-                return nil
-            }
-            return .niri(workspaceId: workspace.id, window: window)
+        guard let engine = controller.niriEngine,
+              let window = engine.hitTestFocusableWindow(point: location, in: workspace.id)
+        else {
+            return nil
         }
+        return .niri(workspaceId: workspace.id, window: window)
     }
 
     private func focusFollowsMouseToken(for target: FocusFollowsMouseTarget) -> WindowToken {
@@ -1522,11 +1518,7 @@ final class MouseEventHandler {
             return nil
         }
 
-        switch controller.settings.layoutType(for: workspace.name) {
-        case .niri,
-             .defaultLayout:
-            return (engine, workspace.id, monitor)
-        }
+        return (engine, workspace.id, monitor)
     }
 
     private func resetGestureState() {

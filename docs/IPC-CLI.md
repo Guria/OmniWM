@@ -257,9 +257,9 @@ nehirctl command <command-path> [arguments...]
 
 ### Focus
 
-| Command | Arguments | Layout | Description |
-|---------|-----------|--------|-------------|
-| `command focus` | `<left\|right\|up\|down>` | shared | Focus a neighboring window |
+| Command | Arguments | Surface | Description |
+|---------|-----------|---------|-------------|
+| `command focus` | `<left\|right\|up\|down>` | command | Focus a neighboring window |
 | `command focus previous` | — | niri | Focus the previously focused window |
 | `command focus down-or-left` | — | niri | Traverse backward through the active Niri workspace |
 | `command focus up-or-right` | — | niri | Traverse forward through the active Niri workspace |
@@ -269,92 +269,86 @@ nehirctl command <command-path> [arguments...]
 
 ### Move
 
-| Command | Arguments | Layout | Description |
-|---------|-----------|--------|-------------|
-| `command move` | `<left\|right\|up\|down>` | shared | Move the focused window in the given direction |
+| Command | Arguments | Surface | Description |
+|---------|-----------|---------|-------------|
+| `command move` | `<left\|right\|up\|down>` | command | Move the focused window in the given direction |
 
 ### Workspace Switching
 
-| Command | Arguments | Layout | Description |
-|---------|-----------|--------|-------------|
-| `command switch-workspace` | `<number>` | shared | Switch to a workspace by numeric workspace ID on the current monitor |
-| `command switch-workspace next` | — | shared | Switch to the next workspace |
-| `command switch-workspace prev` | — | shared | Switch to the previous workspace |
-| `command switch-workspace back-and-forth` | — | shared | Switch to the previously active workspace |
-| `command switch-workspace anywhere` | `<number>` | shared | Focus a workspace by numeric workspace ID across all monitors |
+| Command | Arguments | Surface | Description |
+|---------|-----------|---------|-------------|
+| `command switch-workspace` | `<number>` | command | Switch to a workspace by numeric workspace ID on the current monitor |
+| `command switch-workspace next` | — | command | Switch to the next workspace |
+| `command switch-workspace prev` | — | command | Switch to the previous workspace |
+| `command switch-workspace back-and-forth` | — | command | Switch to the previously active workspace |
+| `command switch-workspace anywhere` | `<number>` | command | Focus a workspace by numeric workspace ID across all monitors |
 
 ### Move to Workspace
 
-| Command | Arguments | Layout | Description |
-|---------|-----------|--------|-------------|
-| `command move-to-workspace` | `<number>` | shared | Move focused window to a workspace by numeric workspace ID |
-| `command move-to-workspace up` | — | shared | Move focused window to the adjacent workspace above |
-| `command move-to-workspace down` | — | shared | Move focused window to the adjacent workspace below |
-| `command move-to-workspace on-monitor` | `<number> <left\|right\|up\|down>` | shared | Move focused window to a workspace already assigned to the requested adjacent monitor |
+| Command | Arguments | Surface | Description |
+|---------|-----------|---------|-------------|
+| `command move-to-workspace` | `<number>` | command | Move focused window to a workspace by numeric workspace ID |
+| `command move-to-workspace up` | — | command | Move focused window to the adjacent workspace above |
+| `command move-to-workspace down` | — | command | Move focused window to the adjacent workspace below |
+| `command move-to-workspace on-monitor` | `<number> <left\|right\|up\|down>` | command | Move focused window to a workspace already assigned to the requested adjacent monitor |
 
 Workspace IDs are positive numeric strings. Direct hotkeys stay limited to `1-9`, but the workspace UI and IPC/CLI both support `10+`.
 
 ### Monitor Focus
 
-| Command | Arguments | Layout | Description |
-|---------|-----------|--------|-------------|
-| `command focus-monitor prev` | — | shared | Move focus to the previous monitor |
-| `command focus-monitor next` | — | shared | Move focus to the next monitor |
-| `command focus-monitor last` | — | shared | Move focus back to the previous monitor |
-| `command swap-workspace-with-monitor` | `<left\|right\|up\|down>` | shared | Swap active workspace with the workspace on an adjacent monitor |
+| Command | Arguments | Surface | Description |
+|---------|-----------|---------|-------------|
+| `command focus-monitor prev` | — | command | Move focus to the previous monitor |
+| `command focus-monitor next` | — | command | Move focus to the next monitor |
+| `command focus-monitor last` | — | command | Move focus back to the previous monitor |
+| `command swap-workspace-with-monitor` | `<left\|right\|up\|down>` | command | Swap active workspace with the workspace on an adjacent monitor |
 
 ### Column Operations (Niri)
 
-| Command | Arguments | Layout | Description |
-|---------|-----------|--------|-------------|
+| Command | Arguments | Surface | Description |
+|---------|-----------|---------|-------------|
 | `command move-column` | `<left\|right\|up\|down>` | niri | Move the focused Niri column |
 | `command move-column-to-workspace` | `<number>` | niri | Move focused column to workspace by index |
 | `command move-column-to-workspace up` | — | niri | Move focused column to the adjacent workspace above |
 | `command move-column-to-workspace down` | — | niri | Move focused column to the adjacent workspace below |
 | `command toggle-column-tabbed` | — | niri | Toggle tabbed mode for the focused column |
 | `command toggle-column-full-width` | — | niri | Toggle full-width mode for the focused column |
-| `command cycle-column-width forward` | — | shared | Cycle column width presets forward |
-| `command cycle-column-width backward` | — | shared | Cycle column width presets backward |
+| `command cycle-column-width forward` | — | command | Cycle column width presets forward |
+| `command cycle-column-width backward` | — | command | Cycle column width presets backward |
 
 ### Niri Operations
 
-| Command | Arguments | Layout | Description |
-|---------|-----------|--------|-------------|
+| Command | Arguments | Surface | Description |
+|---------|-----------|---------|-------------|
 
 ### Layout & Sizing
 
-| Command | Arguments | Layout | Description |
-|---------|-----------|--------|-------------|
-| `command balance-sizes` | — | shared | Balance layout sizes in the active workspace |
-| `command toggle-fullscreen` | — | shared | Toggle Nehir-managed fullscreen |
-| `command toggle-native-fullscreen` | — | shared | Toggle native macOS fullscreen |
+| Command | Arguments | Surface | Description |
+|---------|-----------|---------|-------------|
+| `command balance-sizes` | — | command | Balance layout sizes in the active workspace |
+| `command toggle-fullscreen` | — | command | Toggle Nehir-managed fullscreen |
+| `command toggle-native-fullscreen` | — | command | Toggle native macOS fullscreen |
 
 ### Window Management
 
-| Command | Arguments | Layout | Description |
-|---------|-----------|--------|-------------|
-| `command toggle-focused-window-floating` | — | shared | Toggle focused window between tiled and floating |
-| `command raise-all-floating-windows` | — | shared | Raise all visible floating windows |
-| `command rescue-offscreen-windows` | — | shared | Clamp tracked floating windows back onto their visible monitors |
-| `command scratchpad assign` | — | shared | Assign the focused window to the scratchpad |
-| `command scratchpad toggle` | — | shared | Show or hide the scratchpad window |
+| Command | Arguments | Surface | Description |
+|---------|-----------|---------|-------------|
+| `command toggle-focused-window-floating` | — | command | Toggle focused window between tiled and floating |
+| `command raise-all-floating-windows` | — | command | Raise all visible floating windows |
+| `command rescue-offscreen-windows` | — | command | Clamp tracked floating windows back onto their visible monitors |
+| `command scratchpad assign` | — | command | Assign the focused window to the scratchpad |
+| `command scratchpad toggle` | — | command | Show or hide the scratchpad window |
 
 ### UI Toggles
 
-| Command | Arguments | Layout | Description |
-|---------|-----------|--------|-------------|
-| `command open-command-palette` | — | shared | Toggle the command palette |
-| `command open-menu-anywhere` | — | shared | Open the menu surface |
-| `command toggle-workspace-bar` | — | shared | Toggle workspace bar visibility |
-| `command toggle-hidden-bar` | — | shared | Toggle the hidden bar surface |
-| `command toggle-quake-terminal` | — | shared | Toggle the configured Quake terminal |
-| `command toggle-overview` | — | shared | Toggle the overview surface |
-
-**Layout compatibility:**
-- `shared` — works with any active layout
-- `niri` — only works when the active workspace uses the Niri layout
-
-Commands sent to an incompatible layout return `layout_mismatch`.
+| Command | Arguments | Surface | Description |
+|---------|-----------|---------|-------------|
+| `command open-command-palette` | — | command | Toggle the command palette |
+| `command open-menu-anywhere` | — | command | Open the menu surface |
+| `command toggle-workspace-bar` | — | command | Toggle workspace bar visibility |
+| `command toggle-hidden-bar` | — | command | Toggle the hidden bar surface |
+| `command toggle-quake-terminal` | — | command | Toggle the configured Quake terminal |
+| `command toggle-overview` | — | command | Toggle the overview surface |
 
 ---
 
@@ -399,7 +393,7 @@ Field tokens are part of the CLI contract. Returned JSON still uses the payload 
 
 **Window fields:** `id`, `pid`, `workspace`, `display`, `app`, `title`, `frame`, `mode`, `layout-reason`, `manual-override`, `is-focused`, `is-visible`, `is-scratchpad`, `hidden-reason`
 
-**Workspace fields:** `id`, `raw-name`, `display-name`, `number`, `layout`, `display`, `is-focused`, `is-visible`, `is-current`, `window-counts`, `focused-window-id`
+**Workspace fields:** `id`, `raw-name`, `display-name`, `number`, `display`, `is-focused`, `is-visible`, `is-current`, `window-counts`, `focused-window-id`
 
 **Display fields:** `id`, `name`, `is-main`, `is-current`, `frame`, `visible-frame`, `has-notch`, `orientation`, `active-workspace`
 
@@ -604,7 +598,7 @@ Workspace bar and layout refresh work is only produced when the UI or IPC curren
 | `focused-monitor` | focused-monitor | Focused monitor updates |
 | `windows-changed` | windows | Managed window inventory updates |
 | `display-changed` | displays | Display state updates |
-| `layout-changed` | workspaces | Workspace layout updates |
+| `layout-changed` | workspaces | Workspace placement/layout updates |
 
 ### subscribe
 
@@ -860,7 +854,6 @@ This envelope is produced locally by the CLI, so it does not include IPC fields 
 | `protocol_mismatch` | Client/server protocol version mismatch |
 | `ignored_disabled` | Window manager is disabled |
 | `ignored_overview` | Overview surface is open |
-| `layout_mismatch` | Command incompatible with the active workspace layout |
 | `unauthorized` | Missing or invalid authorization token |
 | `stale_window_id` | Window ID is from a previous session or no longer valid |
 | `not_found` | Target window, workspace, or rule not found |

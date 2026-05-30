@@ -198,11 +198,8 @@ enum NiriWindowMoveResult {
         var plans: [WorkspaceLayoutPlan] = []
         for wsId in activeWorkspaces.sorted(by: { $0.uuidString < $1.uuidString }) {
             try Task.checkCancellation()
-            guard let workspace = controller.workspaceManager.descriptor(for: wsId),
-                  let monitor = controller.workspaceManager.monitor(for: wsId)
-            else { continue }
+            guard let monitor = controller.workspaceManager.monitor(for: wsId) else { continue }
 
-            let layoutType = controller.settings.layoutType(for: workspace.name)
             let isActiveWorkspace = controller.workspaceManager.activeWorkspaceOrFirst(on: monitor.id)?.id == wsId
 
             guard let snapshot = makeWorkspaceSnapshot(
@@ -1905,4 +1902,3 @@ struct NodeActivationOptions {
     }
 }
 
-extension NiriLayoutHandler: LayoutFocusable, LayoutSizable {}

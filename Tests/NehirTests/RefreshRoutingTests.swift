@@ -338,21 +338,6 @@ private func resetRefreshSpies(
 }
 
 @MainActor
-private func configureWorkspaceLayouts(
-    on controller: WMController,
-    layoutsByName: [String: LayoutType]
-) {
-    let existingConfigurationsByName = Dictionary(
-        uniqueKeysWithValues: controller.settings.workspaceConfigurations.map { ($0.name, $0) }
-    )
-    controller.settings.workspaceConfigurations = layoutsByName.keys.sorted().map { name in
-        let layoutType = layoutsByName[name] ?? .defaultLayout
-        return existingConfigurationsByName[name]?.with(layoutType: layoutType)
-            ?? WorkspaceConfiguration(name: name, layoutType: layoutType)
-    }
-}
-
-@MainActor
 private func addFocusedWindow(
     on controller: WMController,
     workspaceId: WorkspaceDescriptor.ID,
@@ -658,7 +643,7 @@ private func syncNiriWorkspaceStatesForRefreshTests(
         try await withAXFrameProviderIsolationForTests {
             let defaults = makeRefreshTestDefaults()
             let workspaceConfigurations = [
-                WorkspaceConfiguration(name: "1", monitorAssignment: .main, layoutType: .niri)
+                WorkspaceConfiguration(name: "1", monitorAssignment: .main)
             ]
             let bundleId = "com.example.refresh.niri.restore"
             let titlesByInitialWindowId = [
@@ -3642,15 +3627,13 @@ private func syncNiriWorkspaceStatesForRefreshTests(
         controller.layoutRefreshController.requestImmediateRelayout(reason: .workspaceTransition)
         controller.layoutRefreshController.requestWindowRemoval(
             workspaceId: workspaceId,
-            layoutType: .niri,
-            removedNodeId: NodeId(),
+                        removedNodeId: NodeId(),
             niriOldFrames: [WindowToken(pid: getpid(), windowId: 4011): CGRect(x: 0, y: 0, width: 100, height: 100)],
             shouldRecoverFocus: false
         )
         controller.layoutRefreshController.requestWindowRemoval(
             workspaceId: workspaceId,
-            layoutType: .niri,
-            removedNodeId: NodeId(),
+                        removedNodeId: NodeId(),
             niriOldFrames: [WindowToken(pid: getpid(), windowId: 4012): CGRect(x: 100, y: 0, width: 100, height: 100)],
             shouldRecoverFocus: false
         )

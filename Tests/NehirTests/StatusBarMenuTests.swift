@@ -42,9 +42,9 @@ private func makeStatusBarMenuTestDirectory() -> URL {
         let menu = builder.buildMenu()
         let labels = menu.items.compactMap(\.view).flatMap(textLabels(in:))
 
-        #expect(labels.contains("SETTINGS FILE"))
-        #expect(labels.contains("Reveal Settings File"))
-        #expect(labels.contains("Edit Settings File"))
+        #expect(labels.contains("CONFIG FILES"))
+        #expect(labels.contains("Reveal Config Folder"))
+        #expect(labels.contains("Edit settings.toml"))
         #expect(labels.allSatisfy { !$0.localizedCaseInsensitiveContains("export") })
         #expect(labels.allSatisfy { !$0.localizedCaseInsensitiveContains("import") })
     }
@@ -57,15 +57,15 @@ private func makeStatusBarMenuTestDirectory() -> URL {
         builder.settingsFileActionPerformer = { action, receivedSettings in
             #expect(receivedSettings.settingsFileURL == settings.settingsFileURL)
             performedActions.append(action)
-            return action == .reveal ? .revealed : .opened
+            return action == .revealConfigFolder ? .revealedConfigFolder : .openedSettingsFile
         }
 
         let menu = builder.buildMenu()
 
-        try actionRow(in: menu, labeled: "Reveal Settings File").performActionForTests()
-        try actionRow(in: menu, labeled: "Edit Settings File").performActionForTests()
+        try actionRow(in: menu, labeled: "Reveal Config Folder").performActionForTests()
+        try actionRow(in: menu, labeled: "Edit settings.toml").performActionForTests()
 
-        #expect(performedActions == [.reveal, .open])
+        #expect(performedActions == [.revealConfigFolder, .openMainSettingsFile])
     }
 
     @Test func buildMenuIncludesIPCSectionAndCLIInstallActionWhenEnabled() throws {
@@ -112,12 +112,12 @@ private func makeStatusBarMenuTestDirectory() -> URL {
         builder.settingsFileActionPerformer = { action, receivedSettings in
             performedAction = action
             #expect(receivedSettings.settingsFileURL == settings.settingsFileURL)
-            return .revealed
+            return .revealedConfigFolder
         }
 
-        builder.performSettingsFileAction(.reveal)
+        builder.performSettingsFileAction(.revealConfigFolder)
 
-        #expect(performedAction == .reveal)
+        #expect(performedAction == .revealConfigFolder)
         #expect(didPresentAlert == false)
         #expect(settings.settingsFileURL.lastPathComponent == "settings.toml")
     }
@@ -133,7 +133,7 @@ private func makeStatusBarMenuTestDirectory() -> URL {
             throw CocoaError(.fileNoSuchFile)
         }
 
-        builder.performSettingsFileAction(.open)
+        builder.performSettingsFileAction(.openMainSettingsFile)
 
         #expect(didPresentAlert == false)
     }

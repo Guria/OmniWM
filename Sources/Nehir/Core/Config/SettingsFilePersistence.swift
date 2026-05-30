@@ -33,6 +33,10 @@ final class SettingsFilePersistence {
 
     nonisolated static let defaultDirectoryURL = NehirStoragePaths.live.configDirectory
     nonisolated static let fileName = "settings.toml"
+    nonisolated static let hotkeysFileName = "hotkeys.toml"
+    nonisolated static let workspacesFileName = "workspaces.toml"
+    nonisolated static let appRulesDirectoryName = "apprules.d"
+    nonisolated static let monitorsDirectoryName = "monitors.d"
     nonisolated static let corruptFileName = "settings.toml.corrupt"
     nonisolated static var fileURL: URL {
         defaultDirectoryURL.appendingPathComponent(fileName, isDirectory: false)
@@ -40,6 +44,10 @@ final class SettingsFilePersistence {
 
     let directoryURL: URL
     let fileURL: URL
+    let hotkeysFileURL: URL
+    let workspacesFileURL: URL
+    let appRulesDirectoryURL: URL
+    let monitorsDirectoryURL: URL
 
     private let deferSaves: Bool
     private var directoryFileDescriptor: CInt = -1
@@ -47,6 +55,8 @@ final class SettingsFilePersistence {
     private var settingsFileDescriptor: CInt = -1
     private var settingsFileWatcher: DispatchSourceFileSystemObject?
     private var watchedSettingsFileIdentity: FileIdentity?
+    private var auxiliaryFileDescriptors: [String: CInt] = [:]
+    private var auxiliaryFileWatchers: [String: DispatchSourceFileSystemObject] = [:]
     private var pendingExport: SettingsExport?
     private var saveScheduled = false
     private var lastWrittenFingerprint: FileFingerprint?
@@ -61,6 +71,10 @@ final class SettingsFilePersistence {
     ) {
         directoryURL = directory
         fileURL = directory.appendingPathComponent(Self.fileName, isDirectory: false)
+        hotkeysFileURL = directory.appendingPathComponent(Self.hotkeysFileName, isDirectory: false)
+        workspacesFileURL = directory.appendingPathComponent(Self.workspacesFileName, isDirectory: false)
+        appRulesDirectoryURL = directory.appendingPathComponent(Self.appRulesDirectoryName, isDirectory: true)
+        monitorsDirectoryURL = directory.appendingPathComponent(Self.monitorsDirectoryName, isDirectory: true)
         self.deferSaves = deferSaves
 
         if startWatching {
@@ -73,6 +87,7 @@ final class SettingsFilePersistence {
         if settingsFileWatcher == nil, settingsFileDescriptor >= 0 {
             close(settingsFileDescriptor)
         }
+        auxiliaryFileWatchers.values.forEach { $0.cancel() }
         directoryWatcher?.cancel()
         if directoryWatcher == nil, directoryFileDescriptor >= 0 {
             close(directoryFileDescriptor)
@@ -127,11 +142,26 @@ final class SettingsFilePersistence {
         let data = try SettingsTOMLCodec.encode(export)
         try data.write(to: fileURL, options: .atomic)
 
+        let hotkeysData = HotkeysTOMLCodec.encode(export.hotkeyBindings, modifierTrigger: export.modifierTrigger)
+        try hotkeysData.write(to: hotkeysFileURL, options: .atomic)
+
+        let workspacesData = WorkspacesTOMLCodec.encode(export.workspaceConfigurations)
+        try workspacesData.write(to: workspacesFileURL, options: .atomic)
+
+        try AppRuleFileStore.write(export.appRules, to: appRulesDirectoryURL)
+        try MonitorOverrideFileStore.write(
+            bar: export.monitorBarSettings,
+            orientation: export.monitorOrientationSettings,
+            niri: export.monitorNiriSettings,
+            to: monitorsDirectoryURL
+        )
+
         let fingerprint = currentFingerprint()
         lastWrittenFingerprint = fingerprint
         lastObservedFingerprint = fingerprint
         lastPersistedExport = export
         refreshSettingsFileWatcher(for: fingerprint)
+        refreshAuxiliaryFileWatchers()
     }
 
     func scheduleSave(_ export: @autoclosure () -> SettingsExport) {
@@ -186,6 +216,7 @@ final class SettingsFilePersistence {
 
         startDirectoryWatcher()
         refreshSettingsFileWatcher()
+        refreshAuxiliaryFileWatchers()
     }
 
     private func startDirectoryWatcher() {
@@ -213,25 +244,43 @@ final class SettingsFilePersistence {
     }
 
     private func handleDirectoryWriteEvent() {
-        handlePossibleSettingsFileChange()
+        handlePossibleSettingsFileChange(forceReload: true)
     }
 
     private func handleSettingsFileEvent() {
         handlePossibleSettingsFileChange()
     }
 
-    private func handlePossibleSettingsFileChange() {
+    private func handleAuxiliaryFileEvent() {
+        handlePossibleSettingsFileChange(forceReload: true)
+    }
+
+    private func handlePossibleSettingsFileChange(forceReload: Bool = false) {
         let observedFingerprint = currentFingerprint()
         refreshSettingsFileWatcher(for: observedFingerprint)
+        refreshAuxiliaryFileWatchers()
 
-        if observedFingerprint == lastWrittenFingerprint {
+        if !forceReload, observedFingerprint == lastWrittenFingerprint {
             lastObservedFingerprint = observedFingerprint
             return
         }
 
-        guard observedFingerprint != lastObservedFingerprint else { return }
-        guard let export = reloadIfChanged() else { return }
+        guard forceReload || observedFingerprint != lastObservedFingerprint else { return }
+        let previousExport = lastPersistedExport
+        guard let export = reloadIfChanged() else {
+            scheduleReloadRetry(forceReload: forceReload)
+            return
+        }
+        refreshAuxiliaryFileWatchers()
+        guard export != previousExport else { return }
         onExternalChange?(export)
+    }
+
+    private func scheduleReloadRetry(forceReload: Bool) {
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 50_000_000)
+            self?.handlePossibleSettingsFileChange(forceReload: forceReload)
+        }
     }
 
     private func refreshSettingsFileWatcher(for observedFingerprint: FileFingerprint? = nil) {
@@ -282,6 +331,80 @@ final class SettingsFilePersistence {
         watchedSettingsFileIdentity = nil
     }
 
+    private func refreshAuxiliaryFileWatchers() {
+        let targets = auxiliaryWatchTargets()
+        let targetKeys = Set(targets.map(\.url.path))
+
+        for key in auxiliaryFileWatchers.keys where !targetKeys.contains(key) {
+            auxiliaryFileWatchers[key]?.cancel()
+            auxiliaryFileWatchers[key] = nil
+            auxiliaryFileDescriptors[key] = nil
+        }
+
+        for target in targets where auxiliaryFileWatchers[target.url.path] == nil {
+            startAuxiliaryWatcher(for: target)
+        }
+    }
+
+    private struct AuxiliaryWatchTarget {
+        let url: URL
+        let isDirectory: Bool
+    }
+
+    private func auxiliaryWatchTargets() -> [AuxiliaryWatchTarget] {
+        let fm = FileManager.default
+        var targets: [AuxiliaryWatchTarget] = []
+
+        for url in [hotkeysFileURL, workspacesFileURL] where fm.fileExists(atPath: url.path) {
+            targets.append(.init(url: url, isDirectory: false))
+        }
+
+        for directory in [appRulesDirectoryURL, monitorsDirectoryURL] where isExistingDirectory(directory) {
+            targets.append(.init(url: directory, isDirectory: true))
+            if let files = try? fm.contentsOfDirectory(
+                at: directory,
+                includingPropertiesForKeys: [.isRegularFileKey],
+                options: [.skipsHiddenFiles]
+            ) {
+                for fileURL in files where fileURL.pathExtension == "toml" {
+                    targets.append(.init(url: fileURL, isDirectory: false))
+                }
+            }
+        }
+
+        return targets
+    }
+
+    private func isExistingDirectory(_ url: URL) -> Bool {
+        var isDirectory: ObjCBool = false
+        return FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory) && isDirectory.boolValue
+    }
+
+    private func startAuxiliaryWatcher(for target: AuxiliaryWatchTarget) {
+        let fileDescriptor = open(target.url.path, O_EVTONLY)
+        guard fileDescriptor >= 0 else { return }
+
+        let key = target.url.path
+        auxiliaryFileDescriptors[key] = fileDescriptor
+        let eventMask: DispatchSource.FileSystemEvent = target.isDirectory ? .write : [.write, .delete, .rename]
+        let watcher = DispatchSource.makeFileSystemObjectSource(
+            fileDescriptor: fileDescriptor,
+            eventMask: eventMask,
+            queue: .main
+        )
+        watcher.setEventHandler { [weak self] in
+            self?.handleAuxiliaryFileEvent()
+        }
+        watcher.setCancelHandler { [weak self] in
+            close(fileDescriptor)
+            if self?.auxiliaryFileDescriptors[key] == fileDescriptor {
+                self?.auxiliaryFileDescriptors[key] = nil
+            }
+        }
+        auxiliaryFileWatchers[key] = watcher
+        watcher.resume()
+    }
+
     private func ensureDirectoryExists() throws {
         try FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true)
     }
@@ -301,8 +424,32 @@ final class SettingsFilePersistence {
             throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
         }
 
+        var export = try SettingsTOMLCodec.decode(data)
+
+        if let hotkeysData = try? Data(contentsOf: hotkeysFileURL) {
+            let hotkeys = HotkeysTOMLCodec.decodeDocument(hotkeysData, defaults: HotkeyBindingRegistry.defaults())
+            export.hotkeyBindings = hotkeys.bindings
+            export.modifierTrigger = hotkeys.modifierTrigger
+        }
+
+        if let workspacesData = try? Data(contentsOf: workspacesFileURL) {
+            export.workspaceConfigurations = WorkspacesTOMLCodec.decode(
+                workspacesData,
+                defaults: BuiltInSettingsDefaults.workspaceConfigurations
+            )
+        }
+
+        if isExistingDirectory(appRulesDirectoryURL) {
+            export.appRules = AppRuleFileStore.read(from: appRulesDirectoryURL)
+        }
+
+        let monitorOverrides = MonitorOverrideFileStore.read(from: monitorsDirectoryURL)
+        export.monitorBarSettings = monitorOverrides.bar
+        export.monitorOrientationSettings = monitorOverrides.orientation
+        export.monitorNiriSettings = monitorOverrides.niri
+
         return FileSnapshot(
-            export: try SettingsTOMLCodec.decode(data),
+            export: export,
             fingerprint: Self.fingerprint(from: statBuffer)
         )
     }

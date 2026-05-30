@@ -112,12 +112,6 @@ final class SettingsStore {
         didSet { scheduleSave() }
     }
 
-    var defaultLayoutType = LayoutType(
-        rawValue: SettingsStore.defaultExport.defaultLayoutType
-    ) ?? .niri {
-        didSet { scheduleSave() }
-    }
-
     var bordersEnabled = SettingsStore.defaultExport.bordersEnabled {
         didSet { scheduleSave() }
     }
@@ -231,10 +225,6 @@ final class SettingsStore {
     }
 
     var preventSleepEnabled = SettingsStore.defaultExport.preventSleepEnabled {
-        didSet { scheduleSave() }
-    }
-
-    var updateChecksEnabled = SettingsStore.defaultExport.updateChecksEnabled {
         didSet { scheduleSave() }
     }
 
@@ -437,13 +427,41 @@ final class SettingsStore {
         }
     }
 
+    var configDirectoryURL: URL {
+        persistence.directoryURL
+    }
+
     var settingsFileURL: URL {
         persistence.fileURL
     }
 
-    func ensureSettingsFileAvailable() throws {
-        guard !FileManager.default.fileExists(atPath: settingsFileURL.path) else { return }
-        try persistence.saveImmediately(toExport())
+    func ensureConfigFilesAvailable() throws {
+        let export = toExport()
+        let fm = FileManager.default
+        try fm.createDirectory(at: persistence.directoryURL, withIntermediateDirectories: true)
+
+        if !fm.fileExists(atPath: persistence.fileURL.path) {
+            try SettingsTOMLCodec.encode(export).write(to: persistence.fileURL, options: .atomic)
+        }
+        if !fm.fileExists(atPath: persistence.hotkeysFileURL.path) {
+            try HotkeysTOMLCodec.encode(export.hotkeyBindings, modifierTrigger: export.modifierTrigger)
+                .write(to: persistence.hotkeysFileURL, options: .atomic)
+        }
+        if !fm.fileExists(atPath: persistence.workspacesFileURL.path) {
+            try WorkspacesTOMLCodec.encode(export.workspaceConfigurations)
+                .write(to: persistence.workspacesFileURL, options: .atomic)
+        }
+        if !fm.fileExists(atPath: persistence.appRulesDirectoryURL.path) {
+            try AppRuleFileStore.write(export.appRules, to: persistence.appRulesDirectoryURL)
+        }
+        if !fm.fileExists(atPath: persistence.monitorsDirectoryURL.path) {
+            try MonitorOverrideFileStore.write(
+                bar: export.monitorBarSettings,
+                orientation: export.monitorOrientationSettings,
+                niri: export.monitorNiriSettings,
+                to: persistence.monitorsDirectoryURL
+            )
+        }
     }
 
     func flushNow() {
@@ -477,7 +495,6 @@ final class SettingsStore {
             niriColumnWidthPresets: niriColumnWidthPresets,
             niriDefaultColumnWidth: niriDefaultColumnWidth,
             workspaceConfigurations: workspaceConfigurations,
-            defaultLayoutType: defaultLayoutType.rawValue,
             bordersEnabled: bordersEnabled,
             borderWidth: borderWidth,
             borderColorRed: borderColorRed,
@@ -507,7 +524,6 @@ final class SettingsStore {
             monitorOrientationSettings: monitorOrientationSettings,
             monitorNiriSettings: monitorNiriSettings,
             preventSleepEnabled: preventSleepEnabled,
-            updateChecksEnabled: updateChecksEnabled,
             ipcEnabled: ipcEnabled,
             scrollGestureEnabled: scrollGestureEnabled,
             scrollSensitivity: scrollSensitivity,
@@ -568,7 +584,6 @@ final class SettingsStore {
             export.workspaceConfigurations,
             monitors: monitors
         )
-        defaultLayoutType = LayoutType(rawValue: export.defaultLayoutType) ?? .niri
 
         bordersEnabled = export.bordersEnabled
         borderWidth = export.borderWidth
@@ -605,7 +620,6 @@ final class SettingsStore {
         monitorNiriSettings = SettingsStore.reboundMonitorSettings(export.monitorNiriSettings, monitors: monitors)
 
         preventSleepEnabled = export.preventSleepEnabled
-        updateChecksEnabled = export.updateChecksEnabled
         ipcEnabled = export.ipcEnabled
         scrollGestureEnabled = export.scrollGestureEnabled
         scrollSensitivity = export.scrollSensitivity
@@ -730,15 +744,6 @@ final class SettingsStore {
         workspaceConfigurations.map(\.name)
     }
 
-    func layoutType(for workspaceName: String) -> LayoutType {
-        if let config = workspaceConfigurations.first(where: { $0.name == workspaceName }) {
-            if config.layoutType == .defaultLayout {
-                return defaultLayoutType
-            }
-            return config.layoutType
-        }
-        return defaultLayoutType
-    }
 
     func displayName(for workspaceName: String) -> String {
         workspaceConfigurations.first(where: { $0.name == workspaceName })?.effectiveDisplayName ?? workspaceName

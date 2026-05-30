@@ -153,7 +153,7 @@ enum KeySymbolMapper {
     }
 
     static func keyName(_ keyCode: UInt32) -> String {
-        keyDescriptors[keyCode]?.name ?? "?"
+        keyDescriptors[keyCode]?.name ?? "KeyCode \(keyCode)"
     }
 
     static func humanReadableString(keyCode: UInt32, modifiers: UInt32, usesModifier: Bool = false) -> String {
@@ -175,7 +175,15 @@ enum KeySymbolMapper {
     }()
 
     static func keyCode(named name: String) -> UInt32? {
-        nameToKeyCode[name] ?? normalizedNameToKeyCode[normalizeName(name)]
+        if name.localizedCaseInsensitiveCompare("KeyCode") == .orderedSame { return nil }
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let compact = trimmed.replacingOccurrences(of: " ", with: "")
+        if compact.lowercased().hasPrefix("keycode"),
+           let value = UInt32(compact.dropFirst("KeyCode".count))
+        {
+            return value
+        }
+        return nameToKeyCode[name] ?? normalizedNameToKeyCode[normalizeName(name)]
     }
 
     static let nameToModifier: [String: UInt32] = [

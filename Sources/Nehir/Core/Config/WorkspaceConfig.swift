@@ -1,22 +1,6 @@
 import Foundation
 import NehirIPC
 
-enum LayoutType: String, Codable, CaseIterable, Identifiable {
-    case defaultLayout = "default"
-    case niri
-
-    var id: String {
-        rawValue
-    }
-
-    var displayName: String {
-        switch self {
-        case .defaultLayout: "Default"
-        case .niri: "Niri (Scrolling)"
-        }
-    }
-}
-
 enum MonitorAssignment: Equatable, Hashable {
     case main
     case secondary
@@ -79,30 +63,48 @@ struct WorkspaceConfiguration: Codable, Identifiable, Equatable {
     var name: String
     var displayName: String?
     var monitorAssignment: MonitorAssignment
-    var layoutType: LayoutType
 
     var effectiveDisplayName: String {
         displayName.flatMap { $0.isEmpty ? nil : $0 } ?? name
     }
 
     init(
-        id: UUID = UUID(),
+        id: UUID? = nil,
         name: String,
         displayName: String? = nil,
-        monitorAssignment: MonitorAssignment = .main,
-        layoutType: LayoutType = .defaultLayout
+        monitorAssignment: MonitorAssignment = .main
     ) {
-        self.id = id
+        self.id = id ?? Self.stableID(for: name)
         self.name = name
         self.displayName = displayName
         self.monitorAssignment = monitorAssignment
-        self.layoutType = layoutType
     }
 
-    func with(layoutType: LayoutType) -> WorkspaceConfiguration {
-        var copy = self
-        copy.layoutType = layoutType
-        return copy
+    private static func stableID(for name: String) -> UUID {
+        func fnv(_ seed: UInt64) -> UInt64 {
+            var hash = seed
+            for byte in name.utf8 {
+                hash ^= UInt64(byte)
+                hash &*= 1_099_511_628_211
+            }
+            return hash
+        }
+
+        var left = fnv(14_695_981_039_346_656_037)
+        var right = fnv(10_995_116_282_11)
+        var bytes = [UInt8](repeating: 0, count: 16)
+        for index in 0..<8 {
+            bytes[index] = UInt8((left >> UInt64((7 - index) * 8)) & 0xff)
+            bytes[index + 8] = UInt8((right >> UInt64((7 - index) * 8)) & 0xff)
+        }
+        bytes[6] = (bytes[6] & 0x0f) | 0x50
+        bytes[8] = (bytes[8] & 0x3f) | 0x80
+        return UUID(uuid: (
+            bytes[0], bytes[1], bytes[2], bytes[3],
+            bytes[4], bytes[5], bytes[6], bytes[7],
+            bytes[8], bytes[9], bytes[10], bytes[11],
+            bytes[12], bytes[13], bytes[14], bytes[15]
+        ))
     }
 
     var sortOrder: Int {

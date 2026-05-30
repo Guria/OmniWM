@@ -1,9 +1,5 @@
 import Foundation
 
-public enum IPCAutomationLayoutCompatibility: String, Codable, CaseIterable, Equatable, Sendable {
-    case shared
-}
-
 public enum IPCQuerySelectorName: String, Codable, CaseIterable, Equatable, Hashable, Sendable {
     case window
     case workspace
@@ -45,7 +41,6 @@ public enum IPCCommandArgumentKind: String, Codable, CaseIterable, Equatable, Se
     case workspaceNumber = "workspace-number"
     case columnIndex = "column-index"
     case windowIndex = "window-index"
-    case layout
     case resizeOperation = "resize-operation"
     case sizeChange = "size-change"
 
@@ -57,8 +52,6 @@ public enum IPCCommandArgumentKind: String, Codable, CaseIterable, Equatable, Se
              .columnIndex,
              .windowIndex:
             "<number>"
-        case .layout:
-            "<default|niri>"
         case .resizeOperation:
             "<grow|shrink>"
         case .sizeChange:
@@ -112,21 +105,18 @@ public struct IPCCommandDescriptor: Codable, Equatable, Sendable {
     public let name: IPCCommandName
     public let summary: String
     public let arguments: [IPCCommandArgumentDescriptor]
-    public let layoutCompatibility: IPCAutomationLayoutCompatibility
 
     public init(
         commandWords: [String],
         name: IPCCommandName,
         summary: String,
-        arguments: [IPCCommandArgumentDescriptor] = [],
-        layoutCompatibility: IPCAutomationLayoutCompatibility = .shared
+        arguments: [IPCCommandArgumentDescriptor] = []
     ) {
         self.commandWords = commandWords
         self.path = IPCCommandDescriptor.makePath(commandWords: commandWords, arguments: arguments)
         self.name = name
         self.summary = summary
         self.arguments = arguments
-        self.layoutCompatibility = layoutCompatibility
     }
 
     private static func makePath(
@@ -253,10 +243,6 @@ public enum IPCAutomationManifest {
         kind: .windowIndex,
         summary: "One-based window index within the focused column."
     )
-    private static let layoutArgument = IPCCommandArgumentDescriptor(
-        kind: .layout,
-        summary: "Workspace layout selection."
-    )
     private static let resizeOperationArgument = IPCCommandArgumentDescriptor(
         kind: .resizeOperation,
         summary: "Resize direction mode."
@@ -270,15 +256,13 @@ public enum IPCAutomationManifest {
         _ commandWords: [String],
         name: IPCCommandName,
         summary: String,
-        arguments: [IPCCommandArgumentDescriptor] = [],
-        layoutCompatibility: IPCAutomationLayoutCompatibility = .shared
+        arguments: [IPCCommandArgumentDescriptor] = []
     ) -> IPCCommandDescriptor {
         IPCCommandDescriptor(
             commandWords: commandWords,
             name: name,
             summary: summary,
-            arguments: arguments,
-            layoutCompatibility: layoutCompatibility
+            arguments: arguments
         )
     }
 
@@ -304,7 +288,6 @@ public enum IPCAutomationManifest {
         "raw-name",
         "display-name",
         "number",
-        "layout",
         "display",
         "is-focused",
         "is-visible",
@@ -423,94 +406,79 @@ public enum IPCAutomationManifest {
         command(
             ["focus", "previous"],
             name: .focusPrevious,
-            summary: "Focus the previously focused window.",
-            layoutCompatibility: .shared
+            summary: "Focus the previously focused window."
         ),
         command(
             ["focus", "down-or-left"],
             name: .focusDownOrLeft,
-            summary: "Traverse backward through the active Niri workspace.",
-            layoutCompatibility: .shared
+            summary: "Traverse backward through the active Niri workspace."
         ),
         command(
             ["focus", "up-or-right"],
             name: .focusUpOrRight,
-            summary: "Traverse forward through the active Niri workspace.",
-            layoutCompatibility: .shared
+            summary: "Traverse forward through the active Niri workspace."
         ),
         command(
             ["focus-window-in-column"],
             name: .focusWindowInColumn,
             summary: "Focus a window in the focused Niri column by one-based index.",
-            arguments: [windowIndexArgument],
-            layoutCompatibility: .shared
+            arguments: [windowIndexArgument]
         ),
         command(
             ["focus-window", "top"],
             name: .focusWindowTop,
-            summary: "Focus the top window in the focused Niri column.",
-            layoutCompatibility: .shared
+            summary: "Focus the top window in the focused Niri column."
         ),
         command(
             ["focus-window", "bottom"],
             name: .focusWindowBottom,
-            summary: "Focus the bottom window in the focused Niri column.",
-            layoutCompatibility: .shared
+            summary: "Focus the bottom window in the focused Niri column."
         ),
         command(
             ["focus-window", "down-or-top"],
             name: .focusWindowDownOrTop,
-            summary: "Focus down in the focused Niri column, wrapping to the top.",
-            layoutCompatibility: .shared
+            summary: "Focus down in the focused Niri column, wrapping to the top."
         ),
         command(
             ["focus-window", "up-or-bottom"],
             name: .focusWindowUpOrBottom,
-            summary: "Focus up in the focused Niri column, wrapping to the bottom.",
-            layoutCompatibility: .shared
+            summary: "Focus up in the focused Niri column, wrapping to the bottom."
         ),
         command(
             ["focus-window-or-workspace-down"],
             name: .focusWindowOrWorkspaceDown,
-            summary: "Focus down in the focused Niri column, or switch to the workspace below at the column edge.",
-            layoutCompatibility: .shared
+            summary: "Focus down in the focused Niri column, or switch to the workspace below at the column edge."
         ),
         command(
             ["focus-window-or-workspace-up"],
             name: .focusWindowOrWorkspaceUp,
-            summary: "Focus up in the focused Niri column, or switch to the workspace above at the column edge.",
-            layoutCompatibility: .shared
+            summary: "Focus up in the focused Niri column, or switch to the workspace above at the column edge."
         ),
         command(
             ["focus-column"],
             name: .focusColumn,
             summary: "Focus a Niri column by one-based index.",
-            arguments: [columnIndexArgument],
-            layoutCompatibility: .shared
+            arguments: [columnIndexArgument]
         ),
         command(
             ["focus-column", "first"],
             name: .focusColumnFirst,
-            summary: "Focus the first Niri column.",
-            layoutCompatibility: .shared
+            summary: "Focus the first Niri column."
         ),
         command(
             ["focus-column", "last"],
             name: .focusColumnLast,
-            summary: "Focus the last Niri column.",
-            layoutCompatibility: .shared
+            summary: "Focus the last Niri column."
         ),
         command(
             ["center-column"],
             name: .centerColumn,
-            summary: "Center the focused Niri column without changing focus.",
-            layoutCompatibility: .shared
+            summary: "Center the focused Niri column without changing focus."
         ),
         command(
             ["center-visible-columns"],
             name: .centerVisibleColumns,
-            summary: "Center the fully visible Niri columns around the active column.",
-            layoutCompatibility: .shared
+            summary: "Center the fully visible Niri columns around the active column."
         ),
         command(
             ["move"],
@@ -521,50 +489,42 @@ public enum IPCAutomationManifest {
         command(
             ["move-window-down"],
             name: .moveWindowDown,
-            summary: "Move the focused Niri window down within its column.",
-            layoutCompatibility: .shared
+            summary: "Move the focused Niri window down within its column."
         ),
         command(
             ["move-window-up"],
             name: .moveWindowUp,
-            summary: "Move the focused Niri window up within its column.",
-            layoutCompatibility: .shared
+            summary: "Move the focused Niri window up within its column."
         ),
         command(
             ["move-window-down-or-to-workspace-down"],
             name: .moveWindowDownOrToWorkspaceDown,
-            summary: "Move the focused Niri window down, or to the workspace below at the column edge.",
-            layoutCompatibility: .shared
+            summary: "Move the focused Niri window down, or to the workspace below at the column edge."
         ),
         command(
             ["move-window-up-or-to-workspace-up"],
             name: .moveWindowUpOrToWorkspaceUp,
-            summary: "Move the focused Niri window up, or to the workspace above at the column edge.",
-            layoutCompatibility: .shared
+            summary: "Move the focused Niri window up, or to the workspace above at the column edge."
         ),
         command(
             ["consume-or-expel-window-left"],
             name: .consumeOrExpelWindowLeft,
-            summary: "Consume the focused Niri window into the column to the left, or expel it left from its column.",
-            layoutCompatibility: .shared
+            summary: "Consume the focused Niri window into the column to the left, or expel it left from its column."
         ),
         command(
             ["consume-or-expel-window-right"],
             name: .consumeOrExpelWindowRight,
-            summary: "Consume the focused Niri window into the column to the right, or expel it right from its column.",
-            layoutCompatibility: .shared
+            summary: "Consume the focused Niri window into the column to the right, or expel it right from its column."
         ),
         command(
             ["consume-window-into-column"],
             name: .consumeWindowIntoColumn,
-            summary: "Consume the top window from the next Niri column into the focused column.",
-            layoutCompatibility: .shared
+            summary: "Consume the top window from the next Niri column into the focused column."
         ),
         command(
             ["expel-window-from-column"],
             name: .expelWindowFromColumn,
-            summary: "Expel the bottom window from the focused Niri column into a new column to the right.",
-            layoutCompatibility: .shared
+            summary: "Expel the bottom window from the focused Niri column into a new column to the right."
         ),
         command(
             ["switch-workspace"],
@@ -634,127 +594,107 @@ public enum IPCAutomationManifest {
             ["move-column"],
             name: .moveColumn,
             summary: "Move the focused Niri column in the given direction.",
-            arguments: [directionArgument],
-            layoutCompatibility: .shared
+            arguments: [directionArgument]
         ),
         command(
             ["move-column-to-first"],
             name: .moveColumnToFirst,
-            summary: "Move the focused Niri column to the first position.",
-            layoutCompatibility: .shared
+            summary: "Move the focused Niri column to the first position."
         ),
         command(
             ["move-column-to-last"],
             name: .moveColumnToLast,
-            summary: "Move the focused Niri column to the last position.",
-            layoutCompatibility: .shared
+            summary: "Move the focused Niri column to the last position."
         ),
         command(
             ["move-column-to-index"],
             name: .moveColumnToIndex,
             summary: "Move the focused Niri column to a one-based index.",
-            arguments: [columnIndexArgument],
-            layoutCompatibility: .shared
+            arguments: [columnIndexArgument]
         ),
         command(
             ["move-column-to-workspace"],
             name: .moveColumnToWorkspace,
             summary: "Move the focused Niri column to a workspace by workspace ID.",
-            arguments: [workspaceNumberArgument],
-            layoutCompatibility: .shared
+            arguments: [workspaceNumberArgument]
         ),
         command(
             ["move-column-to-workspace", "up"],
             name: .moveColumnToWorkspaceUp,
-            summary: "Move the focused Niri column to the adjacent workspace above.",
-            layoutCompatibility: .shared
+            summary: "Move the focused Niri column to the adjacent workspace above."
         ),
         command(
             ["move-column-to-workspace", "down"],
             name: .moveColumnToWorkspaceDown,
-            summary: "Move the focused Niri column to the adjacent workspace below.",
-            layoutCompatibility: .shared
+            summary: "Move the focused Niri column to the adjacent workspace below."
         ),
         command(
             ["toggle-column-tabbed"],
             name: .toggleColumnTabbed,
-            summary: "Toggle tabbed mode for the focused Niri column.",
-            layoutCompatibility: .shared
+            summary: "Toggle tabbed mode for the focused Niri column."
         ),
         command(
             ["cycle-column-width", "forward"],
             name: .cycleColumnWidthForward,
-            summary: "Cycle Niri column width presets forward.",
-            layoutCompatibility: .shared
+            summary: "Cycle Niri column width presets forward."
         ),
         command(
             ["cycle-column-width", "backward"],
             name: .cycleColumnWidthBackward,
-            summary: "Cycle Niri column width presets backward.",
-            layoutCompatibility: .shared
+            summary: "Cycle Niri column width presets backward."
         ),
         command(
             ["cycle-window-width", "forward"],
             name: .cycleWindowWidthForward,
-            summary: "Cycle Niri window width presets forward.",
-            layoutCompatibility: .shared
+            summary: "Cycle Niri window width presets forward."
         ),
         command(
             ["cycle-window-width", "backward"],
             name: .cycleWindowWidthBackward,
-            summary: "Cycle Niri window width presets backward.",
-            layoutCompatibility: .shared
+            summary: "Cycle Niri window width presets backward."
         ),
         command(
             ["cycle-window-height", "forward"],
             name: .cycleWindowHeightForward,
-            summary: "Cycle Niri window height presets forward.",
-            layoutCompatibility: .shared
+            summary: "Cycle Niri window height presets forward."
         ),
         command(
             ["cycle-window-height", "backward"],
             name: .cycleWindowHeightBackward,
-            summary: "Cycle Niri window height presets backward.",
-            layoutCompatibility: .shared
+            summary: "Cycle Niri window height presets backward."
         ),
         command(
             ["toggle-column-full-width"],
             name: .toggleColumnFullWidth,
-            summary: "Toggle full-width mode for the focused Niri column.",
-            layoutCompatibility: .shared
+            summary: "Toggle full-width mode for the focused Niri column."
         ),
         command(
             ["expand-column-to-available-width"],
             name: .expandColumnToAvailableWidth,
-            summary: "Expand the focused Niri column into available visible space.",
-            layoutCompatibility: .shared
+            summary: "Expand the focused Niri column into available visible space."
         ),
         command(
             ["reset-window-height"],
             name: .resetWindowHeight,
-            summary: "Reset the focused Niri window height.",
-            layoutCompatibility: .shared
+            summary: "Reset the focused Niri window height."
         ),
         command(
             ["set-column-width"],
             name: .setColumnWidth,
             summary: "Set or adjust the focused Niri column width.",
-            arguments: [sizeChangeArgument],
-            layoutCompatibility: .shared
+            arguments: [sizeChangeArgument]
         ),
         command(
             ["set-window-width"],
             name: .setWindowWidth,
             summary: "Set or adjust the focused Niri window width.",
-            arguments: [sizeChangeArgument],
-            layoutCompatibility: .shared
+            arguments: [sizeChangeArgument]
         ),
         command(
             ["set-window-height"],
             name: .setWindowHeight,
             summary: "Set or adjust the focused Niri window height.",
-            arguments: [sizeChangeArgument],
-            layoutCompatibility: .shared
+            arguments: [sizeChangeArgument]
         ),
         command(
             ["swap-workspace-with-monitor"],
@@ -796,12 +736,6 @@ public enum IPCAutomationManifest {
             ["toggle-quake-terminal"],
             name: .toggleQuakeTerminal,
             summary: "Toggle the configured Quake terminal."
-        ),
-        command(
-            ["set-workspace-layout"],
-            name: .setWorkspaceLayout,
-            summary: "Set the current workspace layout explicitly.",
-            arguments: [layoutArgument]
         ),
         command(["toggle-fullscreen"], name: .toggleFullscreen, summary: "Toggle Nehir-managed fullscreen."),
         command(

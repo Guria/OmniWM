@@ -1121,9 +1121,6 @@ final class AXEventHandler: CGSEventDelegate {
         controller.clearResizePlaceholder(for: token)
 
         let shouldRecoverFocus = token == controller.workspaceManager.focusedToken
-        let layoutType = affectedWorkspaceId
-            .flatMap { controller.workspaceManager.descriptor(for: $0)?.name }
-            .map { controller.settings.layoutType(for: $0) } ?? .defaultLayout
 
         if let entry,
            let wsId = affectedWorkspaceId,
@@ -1160,7 +1157,6 @@ final class AXEventHandler: CGSEventDelegate {
         if let wsId = affectedWorkspaceId {
             controller.layoutRefreshController.requestWindowRemoval(
                 workspaceId: wsId,
-                layoutType: layoutType,
                 removedNodeId: removedNodeId,
                 niriOldFrames: oldFrames,
                 shouldRecoverFocus: shouldRecoverFocus
@@ -1947,9 +1943,6 @@ final class AXEventHandler: CGSEventDelegate {
         else {
             return false
         }
-
-        let layoutType = controller.workspaceManager.descriptor(for: entry.workspaceId)
-            .map { controller.settings.layoutType(for: $0.name) } ?? .defaultLayout
 
         if let isFullscreenProvider {
             return isFullscreenProvider(entry.axRef)

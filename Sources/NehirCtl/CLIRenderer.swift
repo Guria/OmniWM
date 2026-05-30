@@ -73,7 +73,6 @@ enum CLIRenderer {
             return .internalError
         case .disabled,
              .overviewOpen,
-             .layoutMismatch,
              .protocolMismatch,
              .unauthorized,
              .staleWindowId,
@@ -307,7 +306,6 @@ enum CLIRenderer {
                 workspace.id ?? "-",
                 workspace.displayName ?? workspace.rawName ?? "-",
                 workspace.display?.name ?? "-",
-                workspace.layout?.rawValue ?? "-",
                 boolDescription(workspace.isCurrent),
                 boolDescription(workspace.isVisible),
                 countsDescription(workspace.counts),
@@ -316,7 +314,7 @@ enum CLIRenderer {
         }
 
         return formatRows(
-            headers: ["ID", "WORKSPACE", "DISPLAY", "LAYOUT", "CURRENT", "VISIBLE", "COUNTS", "FOCUSED WINDOW"],
+            headers: ["ID", "WORKSPACE", "DISPLAY", "CURRENT", "VISIBLE", "COUNTS", "FOCUSED WINDOW"],
             rows: rows,
             format: format
         )
@@ -410,7 +408,7 @@ enum CLIRenderer {
 
     private static func formattedCommands(_ payload: IPCCommandsQueryResult, format: CLIOutputFormat) -> String {
         let commandRows = payload.commands.map {
-            [$0.path, $0.summary, $0.layoutCompatibility.rawValue]
+            [$0.path, $0.summary, "command"]
         }
         let workspaceRows = payload.workspaceActions.map { [$0.path, $0.summary, "workspace"] }
         let windowRows = payload.windowActions.map { [$0.path, $0.summary, "window"] }

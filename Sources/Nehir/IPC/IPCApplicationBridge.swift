@@ -317,8 +317,6 @@ actor IPCApplicationBridge {
             return .failure(id: id, kind: kind, status: .ignored, code: .disabled)
         case .ignoredOverview:
             return .failure(id: id, kind: kind, status: .ignored, code: .overviewOpen)
-        case .ignoredLayoutMismatch:
-            return .failure(id: id, kind: kind, status: .ignored, code: .layoutMismatch)
         case .staleWindowId:
             return .failure(id: id, kind: kind, code: .staleWindowId)
         case .notFound:

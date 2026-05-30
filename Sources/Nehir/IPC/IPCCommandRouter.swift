@@ -164,11 +164,6 @@ final class IPCCommandRouter {
             return raiseAllFloatingWindows()
         case .rescueOffscreenWindows:
             return rescueOffscreenWindows()
-        case let .setWorkspaceLayout(layout):
-            if let guardResult = validateControllerState() {
-                return guardResult
-            }
-            return controller.commandHandler.setWorkspaceLayout(layoutType(for: layout)) ? .executed : .notFound
         case .toggleFullscreen:
             return controller.commandHandler.performCommand(.toggleFullscreen)
         case .toggleNativeFullscreen:
@@ -303,14 +298,6 @@ final class IPCCommandRouter {
         return currentMonitorId == previousMonitorId ? .notFound : .executed
     }
 
-    private func layoutType(for value: IPCWorkspaceLayout) -> LayoutType {
-        switch value {
-        case .defaultLayout:
-            .defaultLayout
-        case .niri:
-            .niri
-        }
-    }
 
     private func switchWorkspace(using command: HotkeyCommand) -> ExternalCommandResult {
         let previousWorkspaceId = controller.activeWorkspace()?.id

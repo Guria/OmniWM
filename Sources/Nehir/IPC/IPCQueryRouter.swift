@@ -389,8 +389,6 @@ final class IPCQueryRouter {
             displayName: include("display-name", in: fields) ? controller.settings
                 .displayName(for: descriptor.name) : nil,
             number: include("number", in: fields) ? workspaceNumber(from: descriptor) : nil,
-            layout: include("layout", in: fields) ?
-                ipcWorkspaceLayout(from: controller.settings.layoutType(for: descriptor.name)) : nil,
             display: include("display", in: fields) ? monitor.map(displayRef(from:)) : nil,
             isFocused: include("is-focused", in: fields) ? (focusedWorkspaceId == descriptor.id) : nil,
             isVisible: include("is-visible", in: fields) ? visibleWorkspaceIds.contains(descriptor.id) : nil,
@@ -674,14 +672,6 @@ final class IPCQueryRouter {
         }
     }
 
-    private func ipcWorkspaceLayout(from layout: LayoutType) -> IPCWorkspaceLayout {
-        switch layout {
-        case .defaultLayout:
-            .defaultLayout
-        case .niri:
-            .niri
-        }
-    }
 
     private func ipcManualOverride(from override: ManualWindowOverride) -> IPCManualWindowOverride {
         switch override {

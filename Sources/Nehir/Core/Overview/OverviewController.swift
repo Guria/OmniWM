@@ -325,11 +325,7 @@ final class OverviewController {
         snapshots.reserveCapacity(overviewSnapshot.workspaces.count)
 
         for workspace in overviewSnapshot.workspaces {
-            guard isNiriLayout(workspaceId: workspace.id),
-                  let snapshot = engine.overviewSnapshot(for: workspace.id)
-            else {
-                continue
-            }
+            guard let snapshot = engine.overviewSnapshot(for: workspace.id) else { continue }
             snapshots[workspace.id] = snapshot
         }
 
@@ -1008,7 +1004,6 @@ private extension OverviewController {
             )
 
         case let .niriWindowInsert(targetWsId, targetHandle, position):
-            guard isNiriLayout(workspaceId: targetWsId) else { return }
             if targetWsId != session.workspaceId {
                 wmController.workspaceNavigationHandler.moveWindow(
                     handle: session.handle,
@@ -1025,7 +1020,6 @@ private extension OverviewController {
             wmController.layoutRefreshController.startScrollAnimation(for: targetWsId)
 
         case let .niriColumnInsert(targetWsId, insertIndex):
-            guard isNiriLayout(workspaceId: targetWsId) else { return }
             if targetWsId != session.workspaceId {
                 wmController.workspaceNavigationHandler.moveWindow(
                     handle: session.handle,
@@ -1041,13 +1035,6 @@ private extension OverviewController {
         }
 
         wmController.layoutRefreshController.requestImmediateRelayout(reason: .overviewMutation)
-    }
-
-    func isNiriLayout(workspaceId: WorkspaceDescriptor.ID) -> Bool {
-        guard let wmController else { return false }
-        guard let name = wmController.workspaceManager.descriptor(for: workspaceId)?.name else { return false }
-        let layoutType = wmController.settings.layoutType(for: name)
-        return true
     }
 
     func overviewInsertPositionToNiri(_ position: InsertPosition) -> InsertPosition {

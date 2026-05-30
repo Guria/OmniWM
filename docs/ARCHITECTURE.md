@@ -68,8 +68,8 @@ NehirCtl      Nehir + GhosttyKit   (CLI tool)       (main library)
 ```
 Sources/
 ├── Nehir/                          Main library (~38K LOC)
-│   ├── App/                         Application bootstrap, delegate, updater,
-│   │                                and owned-window registry (5 files)
+│   ├── App/                         Application bootstrap, delegate,
+│   │                                and owned-window registry
 │   ├── Core/
 │   │   ├── AppInfoCache.swift       App icon/name cache
 │   │   ├── CommandPaletteMode.swift Command palette mode enum
@@ -102,8 +102,7 @@ Sources/
 │   ├── IPC/                         IPC server, connections, routing (9 files)
 │   ├── QuakeTerminal/               Drop-down terminal, Ghostty integration (9 files)
 │   └── UI/                          SwiftUI settings, status bar, workspace bar,
-│                                    command palette, hidden bar, updater popup
-│                                    (34 files)
+│                                    command palette, and hidden bar
 ├── NehirApp/                       2 files: @main entry + settings redirect
 ├── NehirCtl/                       7 files: CLI parser, IPC client, renderer
 └── NehirIPC/                       5 files: models, wire format, socket path
@@ -186,16 +185,13 @@ The application starts in `Sources/NehirApp/NehirApp.swift`:
 
 When the decision is `.boot`, `finishBootstrap()` runs:
 
-1. **SettingsStore** created — loads settings from UserDefaults
+1. **SettingsStore** created — loads the split TOML config files
 2. **WMController** created — central orchestrator (see [4.1](#41-wmcontroller--the-orchestrator))
-3. **`applyPersistedSettings()`** — creates both layout engines, registers hotkeys, configures borders, workspaces, gaps, etc.
-4. **AppCLIManager** and **UpdateCoordinator** created — CLI exposure workflow plus GitHub release polling and popup coordination
-5. **AppBootstrapState** populated — shares `SettingsStore`, `WMController`, and `UpdateCoordinator` with SwiftUI redirect flows
-6. **StatusBarController** created — menu bar UI, settings entry point, and manual `Check for Updates...` action
+3. **`applyPersistedSettings()`** — registers hotkeys, configures borders, workspaces, gaps, etc.
+4. **AppCLIManager** created — CLI exposure workflow
+5. **AppBootstrapState** populated — shares `SettingsStore` and `WMController` with SwiftUI redirect flows
+6. **StatusBarController** created — menu bar UI, settings entry point, and workspace summary
 7. **IPCServer** started (if enabled in settings) — Unix domain socket server
-8. **Automatic update checks** started — only after bootstrap succeeds and after the status bar / IPC setup paths have completed
-
-The updater is intentionally bootstrap-gated. Release polling and popup presentation do not run during the settings-reset gate or the Displays Have Separate Spaces gate.
 
 ### Service Startup
 
@@ -364,11 +360,11 @@ RefreshReason              → Route              → Scheduling
 
 **DisplayLink Integration:** When animations are active (spring-based viewport scrolling, workspace switch effects), a `CADisplayLink` per display fires at the native refresh rate, driving per-frame layout recalculation.
 
-### 3.5 Layout Engines as Pure State Machines
+### 3.5 Niri Layout Engine as a Pure State Machine
 
-Both layout engines follow the same contract:
+The Niri layout engine follows this contract:
 
-1. They own their own **tree data structures** (columns/windows for Niri)
+1. It owns its own **tree data structures** (columns/windows)
 2. They receive workspace geometry and gap configuration as input
 3. They produce a `[WindowToken: CGRect]` frame dictionary as output
 4. They **never touch windows directly** — no accessibility calls, no frame writes
@@ -742,8 +738,7 @@ A lightweight `NSWindow` overlay that draws a rounded rectangle around the focus
 | **Workspace Bar** | `UI/WorkspaceBar/WorkspaceBarManager.swift` | Visual workspace indicators with window icons per workspace |
 | **Hidden Bar** | `UI/HiddenBar/HiddenBarController.swift` | Collapsible menu bar icon management |
 | **Scratchpad** | `Core/Workspace/WorkspaceManager.swift` | Tracks the transient scratchpad window via `scratchpadToken()`. Show/hide and focus recovery are coordinated by `WMController`. |
-| **Status Bar** | `UI/StatusBar/StatusBarController.swift` | Menu bar icon with settings access, manual update checks, and workspace summary |
-| **Release Updater** | `App/UpdateCoordinator.swift`, `UI/UpdateWindowController.swift` | Polls the latest GitHub release once per day on launch, supports manual checks from Settings and the status bar, and shows a manual-action popup with release notes |
+| **Status Bar** | `UI/StatusBar/StatusBarController.swift` | Menu bar icon with settings access and workspace summary |
 
 Nehir utility windows such as Settings and App Rules still register through `OwnedWindowRegistry`, but that type now acts as a facade over `SurfaceCoordinator` and `SurfaceScene`. The shared surface system assigns each owned UI surface a `SurfaceKind` and `SurfacePolicy`, centralizing hit-testing, screen-capture inclusion, and managed-focus-recovery suppression across overview, workspace bar, border, quake, and utility windows.
 
@@ -763,10 +758,9 @@ HotkeyCenter.dispatch(id)
     │ lookup HotkeyCommand by registration ID
     v
 CommandHandler.handleCommand(.focus(.left))
-    │ check: isEnabled? layout compatible? overview open?
+    │ check: isEnabled? overview open?
     v
-layoutHandler(as: LayoutFocusable.self)?.focusNeighbor(direction: .left)
-    │ e.g., NiriLayoutHandler.focusNeighbor()
+NiriLayoutHandler.focusNeighbor(direction: .left)
     │ determines target window in the Niri tree
     v
 FocusBridgeCoordinator.focusWindow(targetToken)
@@ -864,7 +858,6 @@ CLIRenderer displays result
    ```swift
    case myNewCommand
    ```
-   Set `layoutCompatibility` (`.shared`).
 
 2. **Handle it** in `Sources/Nehir/Core/Controller/CommandHandler.swift`:
    ```swift
@@ -907,7 +900,7 @@ Actions can carry multiple persisted bindings, so any extra default shortcuts sh
 
 3. **Add UI** in the appropriate settings tab under `Sources/Nehir/UI/`.
 
-4. **Update the TOML settings model** in `Sources/Nehir/Core/Config/SettingsExport.swift`, `Sources/Nehir/Core/Config/CanonicalTOMLConfig.swift`, and `Sources/Nehir/Core/Config/SettingsTOMLCodec.swift` for persisted user preferences that belong in editable config. Do not include remote payloads or operational cache state such as updater release notes, release URLs, last-check timestamps, or skipped-release markers.
+4. **Update the TOML settings model** in `Sources/Nehir/Core/Config/SettingsExport.swift`, `Sources/Nehir/Core/Config/CanonicalTOMLConfig.swift`, and `Sources/Nehir/Core/Config/SettingsTOMLCodec.swift` for persisted user preferences that belong in editable config. Keep runtime cache state out of editable config.
 
 5. **Check settings-file touchpoints** when the change affects config discoverability or UX. `Sources/Nehir/UI/SettingsFileWorkflow.swift` is the open/reveal workflow layer, and the `Settings File` section in `Sources/Nehir/UI/SettingsView.swift` is the main user-facing entry point; most new settings do not need workflow code changes, but contributor-facing config behavior and copy should remain accurate.
 

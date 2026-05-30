@@ -22,7 +22,6 @@ import QuartzCore
 
     struct WindowRemovalPayload {
         let workspaceId: WorkspaceDescriptor.ID
-        let layoutType: LayoutType
         let removedNodeId: NodeId?
         let niriOldFrames: [WindowToken: CGRect]
         let shouldRecoverFocus: Bool
@@ -387,22 +386,16 @@ import QuartzCore
             let wsId = workspace.id
             guard workspaceIds.contains(wsId) else { continue }
 
-            let layoutType = controller.settings.layoutType(for: workspace.name)
+            guard let engine = controller.niriEngine else { continue }
+            let state = controller.workspaceManager.niriViewportState(for: wsId)
 
-            switch layoutType {
-            case .niri,
-                 .defaultLayout:
-                guard let engine = controller.niriEngine else { continue }
-                let state = controller.workspaceManager.niriViewportState(for: wsId)
-
-                niriHandler.applyFramesOnDemand(
-                    wsId: wsId,
-                    state: state,
-                    engine: engine,
-                    monitor: monitor,
-                    animationTime: nil
-                )
-            }
+            niriHandler.applyFramesOnDemand(
+                wsId: wsId,
+                state: state,
+                engine: engine,
+                monitor: monitor,
+                animationTime: nil
+            )
         }
 
         let preferredSides = preferredHideSides(for: controller.workspaceManager.monitors)
@@ -721,7 +714,6 @@ import QuartzCore
 
     func requestWindowRemoval(
         workspaceId: WorkspaceDescriptor.ID,
-        layoutType: LayoutType,
         removedNodeId: NodeId?,
         niriOldFrames: [WindowToken: CGRect],
         shouldRecoverFocus: Bool,
@@ -735,7 +727,6 @@ import QuartzCore
                 postLayout: postLayout,
                 windowRemovalPayload: .init(
                     workspaceId: workspaceId,
-                    layoutType: layoutType,
                     removedNodeId: removedNodeId,
                     niriOldFrames: niriOldFrames,
                     shouldRecoverFocus: shouldRecoverFocus
@@ -1053,19 +1044,15 @@ import QuartzCore
         var niriRemovalSeeds: [WorkspaceDescriptor.ID: NiriWindowRemovalSeed] = [:]
 
         for payload in payloads {
-            switch payload.layoutType {
-            case .niri,
-                 .defaultLayout:
-                var removedNodeIds = niriRemovalSeeds[payload.workspaceId]?.removedNodeIds ?? []
-                if let removedNodeId = payload.removedNodeId {
-                    removedNodeIds.append(removedNodeId)
-                }
-                let existingOldFrames = niriRemovalSeeds[payload.workspaceId]?.oldFrames ?? [:]
-                niriRemovalSeeds[payload.workspaceId] = NiriWindowRemovalSeed(
-                    removedNodeIds: removedNodeIds,
-                    oldFrames: existingOldFrames.merging(payload.niriOldFrames) { current, _ in current }
-                )
+            var removedNodeIds = niriRemovalSeeds[payload.workspaceId]?.removedNodeIds ?? []
+            if let removedNodeId = payload.removedNodeId {
+                removedNodeIds.append(removedNodeId)
             }
+            let existingOldFrames = niriRemovalSeeds[payload.workspaceId]?.oldFrames ?? [:]
+            niriRemovalSeeds[payload.workspaceId] = NiriWindowRemovalSeed(
+                removedNodeIds: removedNodeIds,
+                oldFrames: existingOldFrames.merging(payload.niriOldFrames) { current, _ in current }
+            )
 
             if payload.shouldRecoverFocus {
                 focusedWorkspacesToRecover.insert(payload.workspaceId)

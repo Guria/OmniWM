@@ -14,7 +14,6 @@ struct ActionSpec: Equatable {
     let keywords: [String]
     let category: HotkeyCategory
     let visibility: HotkeyVisibility
-    let layoutCompatibility: LayoutCompatibility
     let defaultBinding: KeyBinding
     let ipcCommandName: IPCCommandName?
 
@@ -24,7 +23,7 @@ struct ActionSpec: Equatable {
 
     var searchTerms: [String] {
         ActionCatalog.uniqueTerms(
-            [title, id, layoutCompatibility.rawValue]
+            [title, id]
                 + keywords
                 + (ipcDescriptor.map { [$0.path] + $0.commandWords } ?? [])
         )
@@ -59,9 +58,6 @@ enum ActionCatalog {
         spec(for: command)?.title
     }
 
-    static func layoutCompatibility(for command: HotkeyCommand) -> LayoutCompatibility? {
-        spec(for: command)?.layoutCompatibility
-    }
 
     static func category(for id: String) -> HotkeyCategory? {
         spec(for: id)?.category
@@ -87,7 +83,6 @@ enum ActionCatalog {
 
         guard let spec = spec(for: binding.id) else {
             return binding.command.displayName.localizedCaseInsensitiveContains(query)
-                || binding.command.layoutCompatibility.rawValue.localizedCaseInsensitiveContains(query)
                 || binding.binding.displayString.localizedCaseInsensitiveContains(query)
                 || binding.binding.humanReadableString.localizedCaseInsensitiveContains(query)
         }
@@ -743,7 +738,6 @@ enum ActionCatalog {
             keywords: uniqueTerms(keywords + [title, id]),
             category: category,
             visibility: visibility,
-            layoutCompatibility: compatibility(for: command),
             defaultBinding: defaultBinding(for: binding),
             ipcCommandName: ipcCommandName(for: command)
         )
@@ -760,9 +754,6 @@ enum ActionCatalog {
         )
     }
 
-    private static func compatibility(for command: HotkeyCommand) -> LayoutCompatibility {
-        .shared
-    }
 
     private static func displayName(for command: HotkeyCommand) -> String {
         switch command {

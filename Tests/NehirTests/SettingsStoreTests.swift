@@ -375,7 +375,6 @@ struct SettingsExportTests {
         #expect(defaults.workspaceBarReserveLayoutSpace == false)
         #expect(defaults.appRules == BuiltInSettingsDefaults.appRules)
         #expect(defaults.preventSleepEnabled == false)
-        #expect(defaults.updateChecksEnabled == true)
         #expect(defaults.ipcEnabled == false)
         #expect(defaults.scrollSensitivity == 5.0)
         #expect(defaults.mouseResizeModifierKey == MouseResizeModifierKey.option.rawValue)
@@ -515,7 +514,7 @@ struct KeyBindingCodecTests {
 
         let output = try encodeSingleHotkeyBinding(binding)
 
-        #expect(output.contains("binding = \"Control+Option+K\""))
+        #expect(output.contains("commandPalette = \"Control+Option+K\""))
     }
 
     @Test func keypadBindingsUseReadableStringsAndDistinctCompactBadges() throws {
@@ -528,7 +527,7 @@ struct KeyBindingCodecTests {
 
         #expect(binding.displayString == "⌃⌥⌘KP1")
         #expect(binding.humanReadableString == "Control+Option+Command+Keypad 1")
-        #expect(output.contains("binding = \"Control+Option+Command+Keypad 1\""))
+        #expect(output.contains("commandPalette = \"Control+Option+Command+Keypad 1\""))
     }
 
     @Test func keypadActionKeysUseCanonicalReadableNames() {
@@ -547,8 +546,7 @@ struct KeyBindingCodecTests {
 
         let output = try encodeSingleHotkeyBinding(binding)
 
-        #expect(output.contains("keyCode = 200"))
-        #expect(output.contains("modifiers = \(UInt32(controlKey))"))
+        #expect(output.contains("commandPalette = \"Control+KeyCode 200\""))
     }
 
     @Test func keypadDigitsRemainDistinctFromTopRowDigits() {
@@ -575,7 +573,7 @@ struct KeyBindingCodecTests {
         #expect(binding.displayString == "Modifier+Space")
         #expect(binding.humanReadableString == "Modifier+Space")
         #expect(KeySymbolMapper.fromHumanReadable("Modifier+Space") == binding)
-        #expect(output.contains("binding = \"Modifier+Space\""))
+        #expect(output.contains("commandPalette = \"Modifier+Space\""))
     }
 
     @Test func literalAllModifiersRemainDistinctFromSemanticHyper() {
@@ -596,28 +594,26 @@ struct KeyBindingCodecTests {
     }
 
     @Test func modifierTriggerRoundTripsKeyboardAndMouseButtons() throws {
-        var export = SettingsExport.defaults()
-        export.modifierTrigger = .mouseButton(4)
-
-        var data = try SettingsTOMLCodec.encode(export)
+        var trigger = ModifierKeyTrigger.mouseButton(4)
+        var data = HotkeysTOMLCodec.encode(HotkeyBindingRegistry.defaults(), modifierTrigger: trigger)
         var output = try #require(String(data: data, encoding: .utf8))
-        var decoded = try SettingsTOMLCodec.decode(data)
+        var decoded = HotkeysTOMLCodec.decodeDocument(data, defaults: HotkeyBindingRegistry.defaults())
 
         #expect(output.contains("modifierTrigger = \"MouseButton4\""))
         #expect(decoded.modifierTrigger == .mouseButton(4))
 
-        export.modifierTrigger = .modifier(UInt32(optionKey))
-        data = try SettingsTOMLCodec.encode(export)
+        trigger = .modifier(UInt32(optionKey))
+        data = HotkeysTOMLCodec.encode(HotkeyBindingRegistry.defaults(), modifierTrigger: trigger)
         output = try #require(String(data: data, encoding: .utf8))
-        decoded = try SettingsTOMLCodec.decode(data)
+        decoded = HotkeysTOMLCodec.decodeDocument(data, defaults: HotkeyBindingRegistry.defaults())
 
         #expect(output.contains("modifierTrigger = \"Option\""))
         #expect(decoded.modifierTrigger == .modifier(UInt32(optionKey)))
 
-        export.modifierTrigger = .key(UInt32(kVK_F18))
-        data = try SettingsTOMLCodec.encode(export)
+        trigger = .key(UInt32(kVK_F18))
+        data = HotkeysTOMLCodec.encode(HotkeyBindingRegistry.defaults(), modifierTrigger: trigger)
         output = try #require(String(data: data, encoding: .utf8))
-        decoded = try SettingsTOMLCodec.decode(data)
+        decoded = HotkeysTOMLCodec.decodeDocument(data, defaults: HotkeyBindingRegistry.defaults())
 
         #expect(output.contains("modifierTrigger = \"F18\""))
         #expect(decoded.modifierTrigger == .key(UInt32(kVK_F18)))
@@ -633,13 +629,13 @@ struct KeyBindingCodecTests {
     }
 
     private func encodeSingleHotkeyBinding(_ binding: KeyBinding) throws -> String {
-        var export = SettingsExport.defaults()
+        let defaults = HotkeyBindingRegistry.defaults()
         let hotkey = try #require(HotkeyBindingRegistry.makeBinding(id: "openCommandPalette", binding: binding))
-        export.hotkeyBindings = [hotkey]
+        let bindings = defaults.map { $0.id == hotkey.id ? hotkey : $0 }
 
-        let data = try SettingsTOMLCodec.encode(export)
-        let decoded = try SettingsTOMLCodec.decode(data)
-        #expect(decoded.hotkeyBindings == [hotkey])
+        let data = HotkeysTOMLCodec.encode(bindings, modifierTrigger: .default)
+        let decoded = HotkeysTOMLCodec.decode(data, defaults: defaults)
+        #expect(decoded.first(where: { $0.id == hotkey.id }) == hotkey)
 
         return try #require(String(data: data, encoding: .utf8))
     }
@@ -659,7 +655,6 @@ struct HotkeySurfaceTests {
         #expect(ids.contains("openCommandPalette"))
         #expect(!ids.contains("openWindowFinder"))
         #expect(!ids.contains("openMenuPalette"))
-        #expect(HotkeyCommand.move(.left).layoutCompatibility == .shared)
     }
 
     @Test func removedDirectionalMonitorBindingsAreAbsent() {
@@ -699,16 +694,15 @@ struct HotkeySurfaceTests {
     }
 
     @Test func hotkeyBindingEncodesWithoutSerializedCommand() throws {
-        var export = SettingsExport.defaults()
+        let defaults = HotkeyBindingRegistry.defaults()
         let binding = HotkeyBinding(id: "move.left", command: .move(.left), binding: .unassigned)
-        export.hotkeyBindings = [binding]
-        let output = try #require(String(data: SettingsTOMLCodec.encode(export), encoding: .utf8))
-        let decoded = try SettingsTOMLCodec.decode(Data(output.utf8))
+        let bindings = defaults.map { $0.id == binding.id ? binding : $0 }
+        let output = try #require(String(data: HotkeysTOMLCodec.encode(bindings, modifierTrigger: .default), encoding: .utf8))
+        let decoded = HotkeysTOMLCodec.decode(Data(output.utf8), defaults: defaults)
 
-        #expect(output.contains("id = \"move.left\""))
-        #expect(output.contains("binding = \"Unassigned\""))
+        #expect(output.contains("left = \"Unassigned\""))
         #expect(output.contains("command = ") == false)
-        #expect(decoded.hotkeyBindings == [binding])
+        #expect(decoded.first(where: { $0.id == binding.id }) == binding)
     }
 }
 
@@ -748,7 +742,6 @@ struct HotkeySurfaceTests {
         let settings = SettingsStore(defaults: defaults)
         settings.focusFollowsWindowToMonitor = true
         settings.mouseWarpAxis = .vertical
-        settings.updateChecksEnabled = false
         settings.mouseResizeModifierKey = .controlCommandShift
         settings.statusBarShowWorkspaceName = true
         settings.statusBarShowAppNames = true
@@ -771,7 +764,6 @@ struct HotkeySurfaceTests {
 
         #expect(reloaded.focusFollowsWindowToMonitor == true)
         #expect(reloaded.mouseWarpAxis == .vertical)
-        #expect(reloaded.updateChecksEnabled == false)
         #expect(reloaded.mouseResizeModifierKey == .controlCommandShift)
         #expect(reloaded.statusBarShowWorkspaceName == true)
         #expect(reloaded.statusBarShowAppNames == true)
@@ -860,24 +852,18 @@ struct SettingsSectionTests {
 }
 
 @MainActor struct RuntimeStateStoreTests {
-    @Test func runtimeStateRoundTripsWindowRestoreCatalogAndUpdaterState() {
+    @Test func runtimeStateRoundTripsWindowRestoreCatalog() {
         let defaults = makeTestDefaults()
         let directory = configurationDirectoryForTests(defaults: defaults)
         let catalog = makePersistedRestoreCatalogFixture()
         let store = RuntimeStateStore(directory: directory)
-        let now = Date(timeIntervalSince1970: 1_700_000_000)
-
         store.windowRestoreCatalog = catalog
-        store.updaterLastCheckedAt = now
-        store.updaterSkippedReleaseTag = "0.5"
         store.flushNow()
 
         let reloaded = RuntimeStateStore(directory: directory)
         let state = reloaded.load()
 
         #expect(state.windowRestoreCatalog == catalog)
-        #expect(state.updaterLastCheckedAt == now)
-        #expect(state.updaterSkippedReleaseTag == "0.5")
     }
 
     @Test func hiddenBarCollapseStateRoundTripsThroughRuntimeStateStore() {
@@ -926,16 +912,16 @@ struct SettingsSectionTests {
         #expect(reloaded.quakeTerminalCustomFrame == frame)
     }
 
-    @Test func missingHiddenBarRuntimeKeyPreservesExistingRuntimeState() throws {
+    @Test func missingHiddenBarRuntimeKeyUsesDefault() throws {
         let defaults = makeTestDefaults()
         let directory = configurationDirectoryForTests(defaults: defaults)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let runtimeURL = directory.appendingPathComponent(RuntimeStateStore.fileName, isDirectory: false)
-        try Data(#"{"updaterSkippedReleaseTag":"0.5"}"#.utf8).write(to: runtimeURL)
+        try Data(#"{"commandPaletteLastMode":"clipboard"}"#.utf8).write(to: runtimeURL)
 
         let reloaded = RuntimeStateStore(directory: directory)
         #expect(reloaded.hiddenBarIsCollapsed == RuntimeStateStore.defaultHiddenBarIsCollapsed)
-        #expect(reloaded.updaterSkippedReleaseTag == "0.5")
+        #expect(reloaded.commandPaletteLastMode == .clipboard)
     }
 
     @Test func runtimeStatePersistsWithPrivatePermissions() throws {
@@ -943,7 +929,7 @@ struct SettingsSectionTests {
         let directory = runtimeStateDirectoryForTests(defaults: defaults)
         let store = RuntimeStateStore(directory: directory, deferSaves: false)
 
-        store.updaterSkippedReleaseTag = "0.5"
+        store.hiddenBarIsCollapsed = false
 
         let fileURL = directory.appendingPathComponent(RuntimeStateStore.fileName, isDirectory: false)
         let directoryMode = try #require(

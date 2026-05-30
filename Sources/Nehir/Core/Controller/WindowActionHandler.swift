@@ -383,16 +383,12 @@ final class WindowActionHandler {
         guard token != anchorToken else { return false }
 
         let targetWorkspaceId = anchorWorkspaceId
-        switch layoutType(for: targetWorkspaceId) {
-        case .niri,
-             .defaultLayout:
-            return summonWindowRightInNiri(
-                token: token,
-                sourceWorkspaceId: targetEntry.workspaceId,
-                targetWorkspaceId: targetWorkspaceId,
-                focusedToken: anchorToken
-            )
-        }
+        return summonWindowRightInNiri(
+            token: token,
+            sourceWorkspaceId: targetEntry.workspaceId,
+            targetWorkspaceId: targetWorkspaceId,
+            focusedToken: anchorToken
+        )
     }
 
     @discardableResult
@@ -472,7 +468,6 @@ final class WindowActionHandler {
         }
 
         let insertIndex = focusedColumnIndex + 1
-        let sourceLayoutType = layoutType(for: sourceWorkspaceId)
 
         if sourceWorkspaceId == targetWorkspaceId {
             guard controller.niriLayoutHandler.insertWindowInNewColumn(
@@ -527,14 +522,6 @@ final class WindowActionHandler {
         }
     }
 
-    private func layoutType(for workspaceId: WorkspaceDescriptor.ID) -> LayoutType {
-        guard let controller,
-              let workspaceName = controller.workspaceManager.descriptor(for: workspaceId)?.name
-        else {
-            return .defaultLayout
-        }
-        return controller.settings.layoutType(for: workspaceName)
-    }
 
     @discardableResult
     func focusWorkspaceFromBar(named name: String) -> Bool {

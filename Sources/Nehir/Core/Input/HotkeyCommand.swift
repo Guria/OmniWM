@@ -1,9 +1,5 @@
 import Foundation
 
-enum LayoutCompatibility: String {
-    case shared = "Shared"
-}
-
 enum HotkeyCommand: Codable, Equatable, Hashable {
     case focus(Direction)
     case focusPrevious
@@ -90,7 +86,4 @@ enum HotkeyCommand: Codable, Equatable, Hashable {
         ActionCatalog.title(for: self) ?? String(describing: self)
     }
 
-    var layoutCompatibility: LayoutCompatibility {
-        ActionCatalog.layoutCompatibility(for: self) ?? .shared
-    }
 }

@@ -8264,7 +8264,7 @@ private func makeCenteredCrossMonitorFixture(
         #expect(midToggleState.viewOffsetPixels.isAnimating)
 
         controller.niriLayoutHandler.tickScrollAnimation(
-            targetTime: controller.animationClock.now() + 10.0,
+            targetTime: controller.animationClock.now() + 60.0,
             displayId: monitor.displayId
         )
 

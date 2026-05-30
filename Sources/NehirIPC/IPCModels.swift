@@ -66,7 +66,6 @@ public enum IPCErrorCode: String, Codable, Equatable, Sendable, Error {
     case protocolMismatch = "protocol_mismatch"
     case disabled = "ignored_disabled"
     case overviewOpen = "ignored_overview"
-    case layoutMismatch = "layout_mismatch"
     case unauthorized = "unauthorized"
     case staleWindowId = "stale_window_id"
     case notFound = "not_found"
@@ -97,11 +96,6 @@ public enum IPCDirection: String, Codable, Equatable, Sendable {
 public enum IPCWindowMode: String, Codable, Equatable, Sendable {
     case tiling
     case floating
-}
-
-public enum IPCWorkspaceLayout: String, Codable, Equatable, Sendable {
-    case defaultLayout = "default"
-    case niri
 }
 
 public enum IPCHiddenReason: String, Codable, Equatable, Sendable {
@@ -274,7 +268,6 @@ public enum IPCCommandName: String, Codable, CaseIterable, Equatable, Sendable {
     case openCommandPalette = "open-command-palette"
     case raiseAllFloatingWindows = "raise-all-floating-windows"
     case rescueOffscreenWindows = "rescue-offscreen-windows"
-    case setWorkspaceLayout = "set-workspace-layout"
     case toggleFullscreen = "toggle-fullscreen"
     case toggleNativeFullscreen = "toggle-native-fullscreen"
     case toggleOverview = "toggle-overview"
@@ -323,7 +316,6 @@ public struct IPCSizeChange: Codable, Equatable, Sendable {
 public enum IPCCommandArgumentValue: Equatable, Sendable {
     case direction(IPCDirection)
     case integer(Int)
-    case layout(IPCWorkspaceLayout)
     case resizeOperation(IPCResizeOperation)
     case sizeChange(IPCSizeChange)
 }
@@ -396,7 +388,6 @@ public enum IPCCommandRequest: Equatable, Sendable {
     case openCommandPalette
     case raiseAllFloatingWindows
     case rescueOffscreenWindows
-    case setWorkspaceLayout(layout: IPCWorkspaceLayout)
     case toggleFullscreen
     case toggleNativeFullscreen
     case toggleOverview
@@ -534,8 +525,6 @@ public enum IPCCommandRequest: Equatable, Sendable {
             .raiseAllFloatingWindows
         case .rescueOffscreenWindows:
             .rescueOffscreenWindows
-        case .setWorkspaceLayout:
-            .setWorkspaceLayout
         case .toggleFullscreen:
             .toggleFullscreen
         case .toggleNativeFullscreen:
@@ -580,12 +569,6 @@ public enum IPCCommandRequest: Equatable, Sendable {
             return value
         }
 
-        func requireLayout() throws -> IPCWorkspaceLayout {
-            guard argumentValues.count == 1, case let .layout(layout) = argumentValues[0] else {
-                throw IPCCommandRequestConstructionError.invalidArgumentType
-            }
-            return layout
-        }
 
         func requireSizeChange() throws -> IPCSizeChange {
             guard argumentValues.count == 1, case let .sizeChange(change) = argumentValues[0] else {
@@ -790,9 +773,6 @@ public enum IPCCommandRequest: Equatable, Sendable {
         case .rescueOffscreenWindows:
             try requireNoArguments()
             self = .rescueOffscreenWindows
-            try requireNoArguments()
-        case .setWorkspaceLayout:
-            self = .setWorkspaceLayout(layout: try requireLayout())
         case .toggleFullscreen:
             try requireNoArguments()
             self = .toggleFullscreen
@@ -854,9 +834,6 @@ extension IPCCommandRequest: Codable {
         let direction: IPCDirection
     }
 
-    private struct IPCLayoutArguments: Codable, Equatable, Sendable {
-        let layout: IPCWorkspaceLayout
-    }
 
     private struct IPCResizeArguments: Codable, Equatable, Sendable {
         let direction: IPCDirection
@@ -1011,9 +988,6 @@ extension IPCCommandRequest: Codable {
             self = .raiseAllFloatingWindows
         case .rescueOffscreenWindows:
             self = .rescueOffscreenWindows
-        case .setWorkspaceLayout:
-            let arguments = try container.decode(IPCLayoutArguments.self, forKey: .arguments)
-            self = .setWorkspaceLayout(layout: arguments.layout)
         case .toggleFullscreen:
             self = .toggleFullscreen
         case .toggleNativeFullscreen:
@@ -1169,9 +1143,6 @@ extension IPCCommandRequest: Codable {
             break
         case .rescueOffscreenWindows:
             break
-            break
-        case let .setWorkspaceLayout(layout):
-            try container.encode(IPCLayoutArguments(layout: layout), forKey: .arguments)
         case .toggleFullscreen:
             break
         case .toggleNativeFullscreen:
@@ -2166,7 +2137,6 @@ public struct IPCWorkspaceQuerySnapshot: Codable, Equatable, Sendable {
     public let rawName: String?
     public let displayName: String?
     public let number: Int?
-    public let layout: IPCWorkspaceLayout?
     public let display: IPCDisplayRef?
     public let isFocused: Bool?
     public let isVisible: Bool?
@@ -2179,7 +2149,6 @@ public struct IPCWorkspaceQuerySnapshot: Codable, Equatable, Sendable {
         rawName: String? = nil,
         displayName: String? = nil,
         number: Int? = nil,
-        layout: IPCWorkspaceLayout? = nil,
         display: IPCDisplayRef? = nil,
         isFocused: Bool? = nil,
         isVisible: Bool? = nil,
@@ -2191,7 +2160,6 @@ public struct IPCWorkspaceQuerySnapshot: Codable, Equatable, Sendable {
         self.rawName = rawName
         self.displayName = displayName
         self.number = number
-        self.layout = layout
         self.display = display
         self.isFocused = isFocused
         self.isVisible = isVisible

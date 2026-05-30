@@ -38,16 +38,9 @@ final class CommandHandler {
             return .ignoredOverview
         }
 
-        let layoutType = currentLayoutType()
-
-        switch (command.layoutCompatibility, layoutType) {
-        default:
-            break
-        }
-
         switch command {
         case let .focus(direction):
-            layoutHandler(as: LayoutFocusable.self)?.focusNeighbor(direction: direction)
+            controller.niriLayoutHandler.focusNeighbor(direction: direction)
         case .focusPrevious:
             focusPreviousInNiri()
         case let .move(direction):
@@ -135,9 +128,9 @@ final class CommandHandler {
         case .centerVisibleColumns:
             controller.niriLayoutHandler.centerVisibleColumns()
         case .cycleColumnWidthForward:
-            layoutHandler(as: LayoutSizable.self)?.cycleSize(forward: true)
+            controller.niriLayoutHandler.cycleSize(forward: true)
         case .cycleColumnWidthBackward:
-            layoutHandler(as: LayoutSizable.self)?.cycleSize(forward: false)
+            controller.niriLayoutHandler.cycleSize(forward: false)
         case .cycleWindowWidthForward:
             controller.niriLayoutHandler.cycleWindowWidth(forward: true)
         case .cycleWindowWidthBackward:
@@ -161,7 +154,7 @@ final class CommandHandler {
         case let .swapWorkspaceWithMonitor(direction):
             controller.workspaceNavigationHandler.swapCurrentWorkspaceWithMonitor(direction: direction)
         case .balanceSizes:
-            layoutHandler(as: LayoutSizable.self)?.balanceSizes()
+            controller.niriLayoutHandler.balanceSizes()
         case .workspaceBackAndForth:
             controller.workspaceNavigationHandler.workspaceBackAndForth()
         case let .focusWorkspaceAnywhere(index):
@@ -202,11 +195,6 @@ final class CommandHandler {
         isOverviewOpen && command != .toggleOverview
     }
 
-    private func layoutHandler<T>(as capability: T.Type) -> T? {
-        guard let controller else { return nil }
-        let handler: AnyObject = controller.layoutRefreshController.niriHandler
-        return handler as? T
-    }
 
     private func focusPreviousInNiri() {
         guard let controller else { return }
@@ -600,31 +588,5 @@ final class CommandHandler {
         }
     }
 
-    private func currentLayoutType() -> LayoutType {
-        guard let controller else { return .niri }
-        guard let ws = controller.activeWorkspace() else { return .niri }
-        return controller.settings.layoutType(for: ws.name)
-    }
 
-    @discardableResult
-    func setWorkspaceLayout(_ newLayout: LayoutType, forWorkspaceNamed workspaceName: String? = nil) -> Bool {
-        guard let controller else { return false }
-        let resolvedWorkspaceName = workspaceName ?? controller.activeWorkspace()?.name
-        guard let resolvedWorkspaceName else { return false }
-
-        var configs = controller.settings.workspaceConfigurations
-        guard let index = configs.firstIndex(where: { $0.name == resolvedWorkspaceName }) else { return false }
-
-        guard configs[index].layoutType != newLayout else { return false }
-
-        configs[index] = configs[index].with(layoutType: newLayout)
-        controller.settings.workspaceConfigurations = configs
-        controller.layoutRefreshController.requestRelayout(reason: .workspaceLayoutToggled)
-        if let ipcApplicationBridge = controller.ipcApplicationBridge {
-            Task {
-                await ipcApplicationBridge.publishEvent(.layoutChanged)
-            }
-        }
-        return true
-    }
 }

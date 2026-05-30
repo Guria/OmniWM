@@ -271,9 +271,7 @@ public enum IPCCommandName: String, Codable, CaseIterable, Equatable, Sendable {
     case toggleFullscreen = "toggle-fullscreen"
     case toggleNativeFullscreen = "toggle-native-fullscreen"
     case toggleOverview = "toggle-overview"
-    case toggleQuakeTerminal = "toggle-quake-terminal"
     case toggleWorkspaceBar = "toggle-workspace-bar"
-    case toggleHiddenBar = "toggle-hidden-bar"
     case toggleFocusedWindowFloating = "toggle-focused-window-floating"
     case scratchpadAssign = "scratchpad-assign"
     case scratchpadToggle = "scratchpad-toggle"
@@ -391,9 +389,7 @@ public enum IPCCommandRequest: Equatable, Sendable {
     case toggleFullscreen
     case toggleNativeFullscreen
     case toggleOverview
-    case toggleQuakeTerminal
     case toggleWorkspaceBar
-    case toggleHiddenBar
     case toggleFocusedWindowFloating
     case scratchpadAssign
     case scratchpadToggle
@@ -531,12 +527,8 @@ public enum IPCCommandRequest: Equatable, Sendable {
             .toggleNativeFullscreen
         case .toggleOverview:
             .toggleOverview
-        case .toggleQuakeTerminal:
-            .toggleQuakeTerminal
         case .toggleWorkspaceBar:
             .toggleWorkspaceBar
-        case .toggleHiddenBar:
-            .toggleHiddenBar
         case .toggleFocusedWindowFloating:
             .toggleFocusedWindowFloating
         case .scratchpadAssign:
@@ -782,15 +774,9 @@ public enum IPCCommandRequest: Equatable, Sendable {
         case .toggleOverview:
             try requireNoArguments()
             self = .toggleOverview
-        case .toggleQuakeTerminal:
-            try requireNoArguments()
-            self = .toggleQuakeTerminal
         case .toggleWorkspaceBar:
             try requireNoArguments()
             self = .toggleWorkspaceBar
-        case .toggleHiddenBar:
-            try requireNoArguments()
-            self = .toggleHiddenBar
         case .toggleFocusedWindowFloating:
             try requireNoArguments()
             self = .toggleFocusedWindowFloating
@@ -994,12 +980,8 @@ extension IPCCommandRequest: Codable {
             self = .toggleNativeFullscreen
         case .toggleOverview:
             self = .toggleOverview
-        case .toggleQuakeTerminal:
-            self = .toggleQuakeTerminal
         case .toggleWorkspaceBar:
             self = .toggleWorkspaceBar
-        case .toggleHiddenBar:
-            self = .toggleHiddenBar
         case .toggleFocusedWindowFloating:
             self = .toggleFocusedWindowFloating
         case .scratchpadAssign:
@@ -1149,11 +1131,7 @@ extension IPCCommandRequest: Codable {
             break
         case .toggleOverview:
             break
-        case .toggleQuakeTerminal:
-            break
         case .toggleWorkspaceBar:
-            break
-        case .toggleHiddenBar:
             break
         case .toggleFocusedWindowFloating:
             break

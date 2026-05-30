@@ -307,7 +307,7 @@ private func makeStatusBarMenuTestDirectory() -> URL {
         let statusBarController = StatusBarController(
             settings: controller.settings,
             controller: controller,
-            hiddenBarController: HiddenBarController(settings: controller.settings)
+            
         )
         controller.statusBarController = statusBarController
         return statusBarController

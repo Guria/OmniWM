@@ -180,10 +180,6 @@ final class CommandHandler {
             controller.openMenuAnywhere()
         case .toggleWorkspaceBarVisibility:
             controller.toggleWorkspaceBarVisibility()
-        case .toggleHiddenBar:
-            controller.toggleHiddenBar()
-        case .toggleQuakeTerminal:
-            controller.toggleQuakeTerminal()
         case .toggleOverview:
             controller.toggleOverview()
         }

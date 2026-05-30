@@ -3,37 +3,9 @@ import CoreGraphics
 import Darwin
 import Foundation
 
-struct RuntimeQuakeTerminalFrame: Codable, Equatable {
-    var x: Double
-    var y: Double
-    var width: Double
-    var height: Double
-
-    init(x: Double, y: Double, width: Double, height: Double) {
-        self.x = x
-        self.y = y
-        self.width = width
-        self.height = height
-    }
-
-    init(frame: CGRect) {
-        x = frame.origin.x
-        y = frame.origin.y
-        width = frame.size.width
-        height = frame.size.height
-    }
-
-    var frame: CGRect {
-        CGRect(x: x, y: y, width: width, height: height)
-    }
-}
-
 struct RuntimeState: Codable, Equatable {
     var windowRestoreCatalog: PersistedWindowRestoreCatalog?
     var commandPaletteLastMode: String?
-    var hiddenBarIsCollapsed: Bool?
-    var quakeTerminalUseCustomFrame: Bool?
-    var quakeTerminalCustomFrame: RuntimeQuakeTerminalFrame?
 }
 
 @MainActor
@@ -41,8 +13,6 @@ final class RuntimeStateStore {
     nonisolated static let defaultDirectoryURL = NehirStoragePaths.live.stateDirectory
     nonisolated static let fileName = "runtime-state.json"
     nonisolated static let defaultCommandPaletteLastMode = CommandPaletteMode.windows
-    nonisolated static let defaultHiddenBarIsCollapsed = true
-    nonisolated static let defaultQuakeTerminalUseCustomFrame = false
     nonisolated static var fileURL: URL {
         defaultDirectoryURL.appendingPathComponent(fileName, isDirectory: false)
     }
@@ -116,40 +86,6 @@ final class RuntimeStateStore {
         set {
             guard commandPaletteLastMode != newValue else { return }
             state.commandPaletteLastMode = newValue.rawValue
-            scheduleSave()
-        }
-    }
-
-    var hiddenBarIsCollapsed: Bool {
-        get { state.hiddenBarIsCollapsed ?? Self.defaultHiddenBarIsCollapsed }
-        set {
-            guard hiddenBarIsCollapsed != newValue else { return }
-            state.hiddenBarIsCollapsed = newValue
-            scheduleSave()
-        }
-    }
-
-    var quakeTerminalUseCustomFrame: Bool {
-        get { state.quakeTerminalUseCustomFrame ?? Self.defaultQuakeTerminalUseCustomFrame }
-        set {
-            guard quakeTerminalUseCustomFrame != newValue else { return }
-            state.quakeTerminalUseCustomFrame = newValue
-            if !newValue {
-                state.quakeTerminalCustomFrame = nil
-            }
-            scheduleSave()
-        }
-    }
-
-    var quakeTerminalCustomFrame: CGRect? {
-        get { state.quakeTerminalCustomFrame?.frame }
-        set {
-            let frame = newValue.map(RuntimeQuakeTerminalFrame.init(frame:))
-            guard state.quakeTerminalCustomFrame != frame else { return }
-            state.quakeTerminalCustomFrame = frame
-            if frame == nil {
-                state.quakeTerminalUseCustomFrame = false
-            }
             scheduleSave()
         }
     }

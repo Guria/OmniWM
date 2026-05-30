@@ -102,9 +102,7 @@ enum HotkeyConfigMapping {
         ("ui", "commandPalette", "openCommandPalette"),
         ("ui", "menuAnywhere", "openMenuAnywhere"),
         ("ui", "toggleOverview", "toggleOverview"),
-        ("ui", "toggleQuakeTerminal", "toggleQuakeTerminal"),
         ("ui", "toggleWorkspaceBar", "toggleWorkspaceBarVisibility"),
-        ("ui", "toggleHiddenBar", "toggleHiddenBar"),
     ]
 
     // MARK: - Lookup caches

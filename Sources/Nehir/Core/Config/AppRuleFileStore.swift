@@ -193,7 +193,7 @@ enum AppRuleFileStore {
                 # Inactive sample. Rename to `.toml` and edit values to enable.
                 # Match complex titles and route the window to a named workspace.
                 [match]
-                bundleId = "com.mitchellh.ghostty"
+                bundleId = "com.example.MyApp"
                 titleRegex = "(?i)(server|logs|deploy)"
 
                 [effect]

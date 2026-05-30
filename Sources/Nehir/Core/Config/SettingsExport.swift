@@ -79,20 +79,6 @@ struct SettingsExport: Equatable {
     var statusBarUseWorkspaceId: Bool
     var animationsEnabled: Bool
 
-    var clipboardHistoryEnabled: Bool
-    var clipboardMaxItems: Int
-    var clipboardMaxItemBytes: Int
-    var clipboardMaxTotalBytes: Int
-
-    var quakeTerminalEnabled: Bool
-    var quakeTerminalPosition: String
-    var quakeTerminalWidthPercent: Double
-    var quakeTerminalHeightPercent: Double
-    var quakeTerminalAnimationDuration: Double
-    var quakeTerminalAutoHide: Bool
-    var quakeTerminalOpacity: Double?
-    var quakeTerminalMonitorMode: String?
-
     var appearanceMode: String
 
     var capabilityOverrides: [WindowCapabilityProfileTOMLOverride] = []
@@ -163,18 +149,6 @@ extension SettingsExport {
             statusBarShowAppNames: false,
             statusBarUseWorkspaceId: false,
             animationsEnabled: true,
-            clipboardHistoryEnabled: false,
-            clipboardMaxItems: 200,
-            clipboardMaxItemBytes: 8_388_608,
-            clipboardMaxTotalBytes: 67_108_864,
-            quakeTerminalEnabled: true,
-            quakeTerminalPosition: QuakeTerminalPosition.center.rawValue,
-            quakeTerminalWidthPercent: 50.0,
-            quakeTerminalHeightPercent: 50.0,
-            quakeTerminalAnimationDuration: 0.2,
-            quakeTerminalAutoHide: false,
-            quakeTerminalOpacity: 1.0,
-            quakeTerminalMonitorMode: QuakeTerminalMonitorMode.focusedWindow.rawValue,
             appearanceMode: AppearanceMode.dark.rawValue,
             capabilityOverrides: []
         )

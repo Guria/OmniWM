@@ -12,7 +12,6 @@ final class SettingsStore {
     private let runtimeState: RuntimeStateStore
     private let autosaveEnabled: Bool
     private var isApplyingExport = false
-    private var isApplyingRuntimeState = false
 
     var onIPCEnabledChanged: (@MainActor (Bool) -> Void)?
     var onExternalSettingsReloaded: (@MainActor () -> Void)?
@@ -286,106 +285,6 @@ final class SettingsStore {
         didSet { scheduleSave() }
     }
 
-    var clipboardHistoryEnabled = SettingsStore.defaultExport.clipboardHistoryEnabled {
-        didSet { scheduleSave() }
-    }
-
-    var clipboardMaxItems = SettingsStore.defaultExport.clipboardMaxItems {
-        didSet { scheduleSave() }
-    }
-
-    var clipboardMaxItemBytes = SettingsStore.defaultExport.clipboardMaxItemBytes {
-        didSet { scheduleSave() }
-    }
-
-    var clipboardMaxTotalBytes = SettingsStore.defaultExport.clipboardMaxTotalBytes {
-        didSet { scheduleSave() }
-    }
-
-    var hiddenBarIsCollapsed = RuntimeStateStore.defaultHiddenBarIsCollapsed {
-        didSet { runtimeState.hiddenBarIsCollapsed = hiddenBarIsCollapsed }
-    }
-
-    var quakeTerminalEnabled = SettingsStore.defaultExport.quakeTerminalEnabled {
-        didSet { scheduleSave() }
-    }
-
-    var quakeTerminalPosition = QuakeTerminalPosition(
-        rawValue: SettingsStore.defaultExport.quakeTerminalPosition
-    ) ?? .center {
-        didSet { scheduleSave() }
-    }
-
-    var quakeTerminalWidthPercent = SettingsStore.defaultExport.quakeTerminalWidthPercent {
-        didSet {
-            let normalized = QuakeTerminalGeometryPolicy.normalizedDimensionPercent(quakeTerminalWidthPercent)
-            if normalized != quakeTerminalWidthPercent {
-                quakeTerminalWidthPercent = normalized
-                return
-            }
-            scheduleSave()
-        }
-    }
-
-    var quakeTerminalHeightPercent = SettingsStore.defaultExport.quakeTerminalHeightPercent {
-        didSet {
-            let normalized = QuakeTerminalGeometryPolicy.normalizedDimensionPercent(quakeTerminalHeightPercent)
-            if normalized != quakeTerminalHeightPercent {
-                quakeTerminalHeightPercent = normalized
-                return
-            }
-            scheduleSave()
-        }
-    }
-
-    var quakeTerminalAnimationDuration = SettingsStore.defaultExport.quakeTerminalAnimationDuration {
-        didSet { scheduleSave() }
-    }
-
-    var quakeTerminalAutoHide = SettingsStore.defaultExport.quakeTerminalAutoHide {
-        didSet { scheduleSave() }
-    }
-
-    var quakeTerminalOpacity = SettingsStore.defaultExport.quakeTerminalOpacity ?? 1.0 {
-        didSet { scheduleSave() }
-    }
-
-    var quakeTerminalMonitorMode = QuakeTerminalMonitorMode(
-        rawValue: SettingsStore.defaultExport.quakeTerminalMonitorMode ?? ""
-    ) ?? .focusedWindow {
-        didSet { scheduleSave() }
-    }
-
-    var quakeTerminalUseCustomFrame = RuntimeStateStore.defaultQuakeTerminalUseCustomFrame {
-        didSet {
-            if !quakeTerminalUseCustomFrame, quakeTerminalCustomFrameStorage != nil {
-                quakeTerminalCustomFrameStorage = nil
-            }
-            syncQuakeTerminalCustomFrameToRuntimeState()
-        }
-    }
-
-    private var quakeTerminalCustomFrameStorage: NSRect? = nil {
-        didSet { syncQuakeTerminalCustomFrameToRuntimeState() }
-    }
-
-    var quakeTerminalCustomFrame: NSRect? {
-        get { quakeTerminalCustomFrameStorage }
-        set {
-            if let frame = QuakeTerminalGeometryPolicy.normalizedCustomFrame(newValue) {
-                quakeTerminalCustomFrameStorage = frame
-            } else {
-                quakeTerminalCustomFrameStorage = nil
-                quakeTerminalUseCustomFrame = false
-            }
-        }
-    }
-
-    func resetQuakeTerminalCustomFrame() {
-        quakeTerminalUseCustomFrame = false
-        quakeTerminalCustomFrame = nil
-    }
-
     var appearanceMode = AppearanceMode(
         rawValue: SettingsStore.defaultExport.appearanceMode
     ) ?? .dark {
@@ -409,14 +308,6 @@ final class SettingsStore {
         self.runtimeState = runtimeState
         self.autosaveEnabled = autosaveEnabled
         commandPaletteLastMode = runtimeState.commandPaletteLastMode
-        hiddenBarIsCollapsed = runtimeState.hiddenBarIsCollapsed
-        isApplyingRuntimeState = true
-        quakeTerminalCustomFrameStorage = QuakeTerminalGeometryPolicy.normalizedCustomFrame(
-            runtimeState.quakeTerminalCustomFrame
-        )
-        quakeTerminalUseCustomFrame = runtimeState.quakeTerminalUseCustomFrame && quakeTerminalCustomFrameStorage != nil
-        isApplyingRuntimeState = false
-        syncQuakeTerminalCustomFrameToRuntimeState()
 
         applyExport(
             persistence.load(),
@@ -535,18 +426,6 @@ final class SettingsStore {
             statusBarShowAppNames: statusBarShowAppNames,
             statusBarUseWorkspaceId: statusBarUseWorkspaceId,
             animationsEnabled: animationsEnabled,
-            clipboardHistoryEnabled: clipboardHistoryEnabled,
-            clipboardMaxItems: clipboardMaxItems,
-            clipboardMaxItemBytes: clipboardMaxItemBytes,
-            clipboardMaxTotalBytes: clipboardMaxTotalBytes,
-            quakeTerminalEnabled: quakeTerminalEnabled,
-            quakeTerminalPosition: quakeTerminalPosition.rawValue,
-            quakeTerminalWidthPercent: quakeTerminalWidthPercent,
-            quakeTerminalHeightPercent: quakeTerminalHeightPercent,
-            quakeTerminalAnimationDuration: quakeTerminalAnimationDuration,
-            quakeTerminalAutoHide: quakeTerminalAutoHide,
-            quakeTerminalOpacity: quakeTerminalOpacity,
-            quakeTerminalMonitorMode: quakeTerminalMonitorMode.rawValue,
             appearanceMode: appearanceMode.rawValue,
             capabilityOverrides: []
         )
@@ -631,34 +510,8 @@ final class SettingsStore {
         statusBarShowAppNames = export.statusBarShowAppNames
         statusBarUseWorkspaceId = export.statusBarUseWorkspaceId
         animationsEnabled = export.animationsEnabled
-        clipboardHistoryEnabled = export.clipboardHistoryEnabled
-        clipboardMaxItems = export.clipboardMaxItems
-        clipboardMaxItemBytes = export.clipboardMaxItemBytes
-        clipboardMaxTotalBytes = export.clipboardMaxTotalBytes
-
-        quakeTerminalEnabled = export.quakeTerminalEnabled
-        quakeTerminalPosition = QuakeTerminalPosition(rawValue: export.quakeTerminalPosition) ?? .center
-        quakeTerminalWidthPercent = QuakeTerminalGeometryPolicy.normalizedDimensionPercent(export.quakeTerminalWidthPercent)
-        quakeTerminalHeightPercent = QuakeTerminalGeometryPolicy.normalizedDimensionPercent(export.quakeTerminalHeightPercent)
-        quakeTerminalAnimationDuration = export.quakeTerminalAnimationDuration
-        quakeTerminalAutoHide = export.quakeTerminalAutoHide
-        quakeTerminalOpacity = export.quakeTerminalOpacity ?? baseline.quakeTerminalOpacity ?? 1.0
-        quakeTerminalMonitorMode = QuakeTerminalMonitorMode(
-            rawValue: export.quakeTerminalMonitorMode ?? baseline.quakeTerminalMonitorMode ?? ""
-        ) ?? .focusedWindow
 
         appearanceMode = AppearanceMode(rawValue: export.appearanceMode) ?? .dark
-    }
-
-    private func syncQuakeTerminalCustomFrameToRuntimeState() {
-        guard !isApplyingRuntimeState else { return }
-        if let quakeTerminalCustomFrameStorage, quakeTerminalUseCustomFrame {
-            runtimeState.quakeTerminalCustomFrame = quakeTerminalCustomFrameStorage
-            runtimeState.quakeTerminalUseCustomFrame = true
-        } else {
-            runtimeState.quakeTerminalUseCustomFrame = false
-            runtimeState.quakeTerminalCustomFrame = nil
-        }
     }
 
     private func handleExternalReload(_ export: SettingsExport) {

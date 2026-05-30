@@ -731,12 +731,6 @@ public enum IPCAutomationManifest {
             name: .toggleWorkspaceBar,
             summary: "Toggle runtime workspace bar visibility."
         ),
-        command(["toggle-hidden-bar"], name: .toggleHiddenBar, summary: "Toggle the hidden bar surface."),
-        command(
-            ["toggle-quake-terminal"],
-            name: .toggleQuakeTerminal,
-            summary: "Toggle the configured Quake terminal."
-        ),
         command(["toggle-fullscreen"], name: .toggleFullscreen, summary: "Toggle Nehir-managed fullscreen."),
         command(
             ["toggle-native-fullscreen"],

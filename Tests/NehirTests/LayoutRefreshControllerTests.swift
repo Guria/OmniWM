@@ -906,91 +906,7 @@ private func makeUnavailableLayoutPlanTestWindow(windowId: Int) -> AXWindowRef {
         #expect(controller.workspaceManager.hiddenState(for: token) == nil)
     }
 
-    @Test @MainActor func coordinatedManagedBorderUpdateUsesLayoutFrameForGhostty() {
-        let controller = makeLayoutPlanTestController()
-        guard let monitor = controller.workspaceManager.monitors.first,
-              let workspaceId = controller.workspaceManager.activeWorkspaceOrFirst(on: monitor.id)?.id
-        else {
-            Issue.record("Missing monitor or active workspace for managed border frame test")
-            return
-        }
 
-        let token = addLayoutPlanTestWindow(on: controller, workspaceId: workspaceId, windowId: 205)
-        _ = controller.workspaceManager.setManagedFocus(token, in: workspaceId, onMonitor: monitor.id)
-        controller.setBordersEnabled(true)
-        controller.appInfoCache.storeInfoForTests(pid: token.pid, bundleId: "com.mitchellh.ghostty")
-
-        let layoutFrame = CGRect(x: 120, y: 80, width: 900, height: 640)
-        let observedFrame = CGRect(x: 120, y: 56, width: 900, height: 664)
-        var observedReadCount = 0
-        controller.focusBorderController.observedFrameProviderForTests = { axRef in
-            observedReadCount += 1
-            return axRef.windowId == 205 ? observedFrame : nil
-        }
-        defer {
-            controller.focusBorderController.observedFrameProviderForTests = nil
-        }
-        _ = confirmFocusedBorderForLayoutPlanTests(on: controller, token: token, frame: layoutFrame)
-
-        var diff = WorkspaceLayoutDiff()
-        diff.focusedFrame = LayoutFocusedFrame(token: token, frame: layoutFrame)
-
-        controller.layoutRefreshController.executeLayoutPlan(
-            WorkspaceLayoutPlan(
-                workspaceId: workspaceId,
-                monitor: controller.layoutRefreshController.buildMonitorSnapshot(for: monitor),
-                sessionPatch: WorkspaceSessionPatch(workspaceId: workspaceId),
-                diff: diff
-            )
-        )
-
-        #expect(lastAppliedBorderWindowIdForLayoutPlanTests(on: controller) == 205)
-        #expect(lastAppliedBorderFrameForLayoutPlanTests(on: controller) == layoutFrame)
-        #expect(observedReadCount == 0)
-    }
-
-    @Test @MainActor func directManagedBorderUpdateUsesLayoutFrameForGhostty() {
-        let controller = makeLayoutPlanTestController()
-        guard let monitor = controller.workspaceManager.monitors.first,
-              let workspaceId = controller.workspaceManager.activeWorkspaceOrFirst(on: monitor.id)?.id
-        else {
-            Issue.record("Missing monitor or active workspace for direct managed border frame test")
-            return
-        }
-
-        let token = addLayoutPlanTestWindow(on: controller, workspaceId: workspaceId, windowId: 206)
-        _ = controller.workspaceManager.setManagedFocus(token, in: workspaceId, onMonitor: monitor.id)
-        controller.setBordersEnabled(true)
-        controller.appInfoCache.storeInfoForTests(pid: token.pid, bundleId: "com.mitchellh.ghostty")
-
-        let layoutFrame = CGRect(x: 240, y: 96, width: 840, height: 600)
-        let observedFrame = CGRect(x: 240, y: 72, width: 840, height: 624)
-        var observedReadCount = 0
-        controller.focusBorderController.observedFrameProviderForTests = { axRef in
-            observedReadCount += 1
-            return axRef.windowId == 206 ? observedFrame : nil
-        }
-        defer {
-            controller.focusBorderController.observedFrameProviderForTests = nil
-        }
-        _ = confirmFocusedBorderForLayoutPlanTests(on: controller, token: token, frame: layoutFrame)
-
-        var diff = WorkspaceLayoutDiff()
-        diff.focusedFrame = LayoutFocusedFrame(token: token, frame: layoutFrame)
-
-        controller.layoutRefreshController.executeLayoutPlan(
-            WorkspaceLayoutPlan(
-                workspaceId: workspaceId,
-                monitor: controller.layoutRefreshController.buildMonitorSnapshot(for: monitor),
-                sessionPatch: WorkspaceSessionPatch(workspaceId: workspaceId),
-                diff: diff
-            )
-        )
-
-        #expect(lastAppliedBorderWindowIdForLayoutPlanTests(on: controller) == 206)
-        #expect(lastAppliedBorderFrameForLayoutPlanTests(on: controller) == layoutFrame)
-        #expect(observedReadCount == 0)
-    }
 
     @Test @MainActor func pendingFrameWriteWinsOverObservedBorderHint() {
         let controller = makeLayoutPlanTestController()
@@ -1022,42 +938,6 @@ private func makeUnavailableLayoutPlanTestWindow(windowId: Int) -> AXWindowRef {
         #expect(lastAppliedBorderFrameForLayoutPlanTests(on: controller) == pendingFrame)
     }
 
-    @Test @MainActor func pendingFrameWriteWinsOverObservedFrameForGhostty() {
-        let controller = makeLayoutPlanTestController()
-        guard let monitor = controller.workspaceManager.monitors.first,
-              let workspaceId = controller.workspaceManager.activeWorkspaceOrFirst(on: monitor.id)?.id
-        else {
-            Issue.record("Missing monitor or active workspace for pending observed border frame test")
-            return
-        }
-
-        let token = addLayoutPlanTestWindow(on: controller, workspaceId: workspaceId, windowId: 209)
-        _ = controller.workspaceManager.setManagedFocus(token, in: workspaceId, onMonitor: monitor.id)
-        controller.setBordersEnabled(true)
-        controller.appInfoCache.storeInfoForTests(pid: token.pid, bundleId: "com.mitchellh.ghostty")
-
-        let pendingFrame = CGRect(x: 260, y: 112, width: 860, height: 620)
-        controller.axManager.frameApplyOverrideForTests = { _ in [] }
-        controller.axManager.applyFramesParallel([(token.pid, token.windowId, pendingFrame)])
-        #expect(controller.axManager.pendingFrameWrite(for: token.windowId) == pendingFrame)
-
-        let observedFrame = CGRect(x: 260, y: 88, width: 860, height: 644)
-        controller.focusBorderController.observedFrameProviderForTests = { axRef in
-            axRef.windowId == 209 ? observedFrame : nil
-        }
-        defer {
-            controller.focusBorderController.observedFrameProviderForTests = nil
-        }
-
-        let rendered = controller.renderKeyboardFocusBorder(
-            for: controller.managedKeyboardFocusTarget(for: token),
-            preferredFrame: pendingFrame
-        )
-
-        #expect(rendered)
-        #expect(lastAppliedBorderWindowIdForLayoutPlanTests(on: controller) == 209)
-        #expect(lastAppliedBorderFrameForLayoutPlanTests(on: controller) == pendingFrame)
-    }
 
     @Test @MainActor func animationsDisabledPromotesCoordinatedFocusedFrameToDirectBorderUpdate() {
         let controller = makeLayoutPlanTestController()
@@ -1156,7 +1036,7 @@ private func makeUnavailableLayoutPlanTestWindow(windowId: Int) -> AXWindowRef {
         let token = addLayoutPlanTestWindow(on: controller, workspaceId: workspaceId, windowId: 207)
         _ = controller.workspaceManager.setManagedFocus(token, in: workspaceId, onMonitor: monitor.id)
         controller.setBordersEnabled(true)
-        controller.appInfoCache.storeInfoForTests(pid: token.pid, bundleId: "com.mitchellh.ghostty")
+        controller.appInfoCache.storeInfoForTests(pid: token.pid, bundleId: "com.example.TestApp")
 
         let staleCachedFrame = CGRect(x: 96, y: 72, width: 720, height: 480)
         controller.axManager.applyFramesParallel([(token.pid, token.windowId, staleCachedFrame)])

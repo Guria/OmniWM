@@ -6,23 +6,20 @@ SIGN_AND_NOTARIZE="${2:-true}"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CONFIG_CAPITALIZED="$(tr '[:lower:]' '[:upper:]' <<< "${CONFIG:0:1}")${CONFIG:1}"
 BUILD_DIR="$ROOT_DIR/.build/apple/Products/$CONFIG_CAPITALIZED"
-EXECUTABLE="$BUILD_DIR/OmniWM"
-CLI_EXECUTABLE="$BUILD_DIR/omniwmctl"
-APP_DIR="$ROOT_DIR/dist/OmniWM.app"
-GHOSTTY_LIBRARY_DIR="$("$ROOT_DIR/Scripts/ghostty-preflight.sh" print-library-dir)"
+EXECUTABLE="$BUILD_DIR/Nehir"
+CLI_EXECUTABLE="$BUILD_DIR/nehirctl"
+APP_DIR="$ROOT_DIR/dist/Nehir.app"
 
 # Signing identity and notarization profile
 SIGNING_IDENTITY="Developer ID Application: Oliver Nikolic (VF8LDJRGFM)"
-NOTARIZE_PROFILE="OmniWM-Notarize"
-ENTITLEMENTS="$ROOT_DIR/OmniWM.entitlements"
+NOTARIZE_PROFILE="Nehir-Notarize"
+ENTITLEMENTS="$ROOT_DIR/Nehir.entitlements"
 
 echo "Running release checks..."
 make -C "$ROOT_DIR" release-check
 
-"$ROOT_DIR/Scripts/ghostty-preflight.sh" verify
-
-echo "Building OmniWM universal binary ($CONFIG)..."
-LIBRARY_PATH="$GHOSTTY_LIBRARY_DIR${LIBRARY_PATH:+:$LIBRARY_PATH}" swift build -c "$CONFIG" --arch arm64 --arch x86_64
+echo "Building Nehir universal binary ($CONFIG)..."
+swift build -c "$CONFIG" --arch arm64 --arch x86_64
 
 echo "Verifying universal binary..."
 lipo -info "$EXECUTABLE"
@@ -33,11 +30,11 @@ rm -rf "$APP_DIR"
 mkdir -p "$APP_DIR/Contents/MacOS"
 mkdir -p "$APP_DIR/Contents/Resources"
 
-cp "$EXECUTABLE" "$APP_DIR/Contents/MacOS/OmniWM"
-cp "$CLI_EXECUTABLE" "$APP_DIR/Contents/MacOS/omniwmctl"
+cp "$EXECUTABLE" "$APP_DIR/Contents/MacOS/Nehir"
+cp "$CLI_EXECUTABLE" "$APP_DIR/Contents/MacOS/nehirctl"
 cp "$ROOT_DIR/Info.plist" "$APP_DIR/Contents/Info.plist"
 cp "$ROOT_DIR/Resources/AppIcon.icns" "$APP_DIR/Contents/Resources/AppIcon.icns"
-cp -R "$BUILD_DIR/OmniWM_OmniWM.bundle" "$APP_DIR/Contents/Resources/"
+cp -R "$BUILD_DIR/Nehir_Nehir.bundle" "$APP_DIR/Contents/Resources/"
 
 if command -v plutil >/dev/null 2>&1; then
   plutil -lint "$APP_DIR/Contents/Info.plist" >/dev/null
@@ -45,15 +42,15 @@ fi
 
 if [ "$SIGN_AND_NOTARIZE" = "true" ]; then
   echo "Signing $APP_DIR with hardened runtime..."
-  codesign --force --options runtime --sign "$SIGNING_IDENTITY" --timestamp "$APP_DIR/Contents/MacOS/omniwmctl"
-  codesign --force --options runtime --entitlements "$ENTITLEMENTS" --sign "$SIGNING_IDENTITY" --timestamp "$APP_DIR/Contents/MacOS/OmniWM"
+  codesign --force --options runtime --sign "$SIGNING_IDENTITY" --timestamp "$APP_DIR/Contents/MacOS/nehirctl"
+  codesign --force --options runtime --entitlements "$ENTITLEMENTS" --sign "$SIGNING_IDENTITY" --timestamp "$APP_DIR/Contents/MacOS/Nehir"
   codesign --force --options runtime --entitlements "$ENTITLEMENTS" --sign "$SIGNING_IDENTITY" --timestamp "$APP_DIR"
 
   echo "Verifying signature..."
   codesign --verify --verbose "$APP_DIR"
 
   echo "Creating ZIP for notarization..."
-  ZIP_PATH="$ROOT_DIR/dist/OmniWM.zip"
+  ZIP_PATH="$ROOT_DIR/dist/Nehir.zip"
   rm -f "$ZIP_PATH"
   ditto -c -k --keepParent "$APP_DIR" "$ZIP_PATH"
 

@@ -51,7 +51,6 @@ private struct CommandPaletteFocusTarget {
 enum CommandPaletteSelectionID: Hashable {
     case window(WindowToken)
     case menu(UUID)
-    case clipboard(UUID)
 }
 
 enum CommandPaletteSelectionTrigger {
@@ -67,10 +66,6 @@ private final class CommandPaletteActionBox: @unchecked Sendable {
     }
 }
 
-private struct CommandPaletteClipboardPasteTarget {
-    let focusTarget: CommandPaletteFocusTarget
-    let expectedWindowId: CGWindowID?
-}
 
 @MainActor
 struct CommandPaletteEnvironment {
@@ -104,57 +99,6 @@ struct CommandPaletteEnvironment {
 
     var performMenuAction: (AXUIElement) -> Void = { element in
         AXUIElementPerformAction(element, "AXPress" as CFString)
-    }
-
-    var clipboardItems: (WMController) -> [ClipboardPaletteItem] = { controller in
-        controller.clipboardPaletteItems()
-    }
-
-    var isClipboardHistoryEnabled: (WMController) -> Bool = { controller in
-        controller.settings.clipboardHistoryEnabled
-    }
-
-    var setClipboardHistoryEnabled: (WMController, Bool) -> Void = { controller, isEnabled in
-        controller.setClipboardHistoryEnabled(isEnabled)
-    }
-
-    var copyClipboardItem: (WMController, UUID) async -> Bool = { controller, id in
-        await controller.copyClipboardItem(id: id)
-    }
-
-    var deleteClipboardItem: (WMController, UUID) async -> [ClipboardPaletteItem] = { controller, id in
-        await controller.deleteClipboardItem(id: id)
-    }
-
-    var clearClipboardHistory: (WMController) async -> [ClipboardPaletteItem] = { controller in
-        await controller.clearClipboardHistory()
-    }
-
-    var confirmClearClipboardHistory: () -> Bool = {
-        let alert = NSAlert()
-        alert.alertStyle = .warning
-        alert.messageText = "Clear Clipboard History?"
-        alert.informativeText = "This removes Nehir's saved clipboard history. The current system clipboard is unchanged."
-        alert.addButton(withTitle: "Clear")
-        alert.addButton(withTitle: "Cancel")
-        return alert.runModal() == .alertFirstButtonReturn
-    }
-
-    var scheduleClipboardPaste: (@escaping () -> Void) -> Void = { action in
-        let box = CommandPaletteActionBox(action)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            box.action()
-        }
-    }
-
-    var postPasteShortcut: () -> Void = {
-        let source = CGEventSource(stateID: .combinedSessionState)
-        let keyDown = CGEvent(keyboardEventSource: source, virtualKey: UInt16(kVK_ANSI_V), keyDown: true)
-        let keyUp = CGEvent(keyboardEventSource: source, virtualKey: UInt16(kVK_ANSI_V), keyDown: false)
-        keyDown?.flags = .maskCommand
-        keyUp?.flags = .maskCommand
-        keyDown?.post(tap: .cgSessionEventTap)
-        keyUp?.post(tap: .cgSessionEventTap)
     }
 
     var isAccessibilityTrusted: () -> Bool = {
@@ -210,11 +154,6 @@ final class CommandPaletteController: NSObject, ObservableObject, NSWindowDelega
     }
 
     @Published private(set) var isMenuLoading = false
-    @Published private(set) var clipboardItems: [ClipboardPaletteItem] = [] {
-        didSet { updateSelectionAfterFilterChange() }
-    }
-
-    @Published private(set) var isClipboardHistoryEnabled = false
 
     private let environment: CommandPaletteEnvironment
     private let motionPolicy: MotionPolicy
@@ -243,8 +182,6 @@ final class CommandPaletteController: NSObject, ObservableObject, NSWindowDelega
         case navigateWindow(WMController, WindowHandle)
         case summonWindowRight(WMController, WindowHandle, CommandPaletteSummonAnchor)
         case pressMenu(CommandPaletteFocusTarget, AXUIElement)
-        case copyClipboard(WMController, UUID)
-        case pasteClipboard(WMController, UUID, CommandPaletteClipboardPasteTarget?)
     }
 
     init(
@@ -266,10 +203,6 @@ final class CommandPaletteController: NSObject, ObservableObject, NSWindowDelega
         filterMenuItems(menuItems, query: searchText)
     }
 
-    var filteredClipboardItems: [ClipboardPaletteItem] {
-        filterClipboardItems(clipboardItems, query: searchText)
-    }
-
     var isMenuModeAvailable: Bool {
         Self.menuModeAvailable(hasMenuFocusTarget: menuFocusTarget != nil)
     }
@@ -283,16 +216,6 @@ final class CommandPaletteController: NSObject, ObservableObject, NSWindowDelega
             return Self.availableMenuStatusText(for: menuFocusTarget.app.localizedName)
         }
         return Self.unavailableMenuStatusText
-    }
-
-    var clipboardStatusText: String {
-        guard isClipboardHistoryEnabled else {
-            return "Clipboard history is disabled."
-        }
-        if clipboardItems.isEmpty {
-            return "Clipboard history is empty."
-        }
-        return "Enter pastes. Shift-Enter copies."
     }
 
     func toggle(wmController: WMController) {
@@ -315,8 +238,6 @@ final class CommandPaletteController: NSObject, ObservableObject, NSWindowDelega
         summonAnchor = Self.resolveSummonAnchor(for: wmController)
         windows = buildWindowItems(from: wmController)
         menuItems = []
-        isClipboardHistoryEnabled = environment.isClipboardHistoryEnabled(wmController)
-        clipboardItems = isClipboardHistoryEnabled ? environment.clipboardItems(wmController) : []
         hasLoadedMenuItems = false
         sessionMenuCache.removeAll()
         isMenuLoading = false
@@ -364,8 +285,6 @@ final class CommandPaletteController: NSObject, ObservableObject, NSWindowDelega
             InlineHint(title: mode.displayName, shortcut: "⌘1")
         case .menu:
             InlineHint(title: mode.displayName, shortcut: "⌘2")
-        case .clipboard:
-            InlineHint(title: mode.displayName, shortcut: "⌘3")
         }
     }
 
@@ -428,8 +347,6 @@ final class CommandPaletteController: NSObject, ObservableObject, NSWindowDelega
         wmController?.settings.commandPaletteLastMode = selectedMode
         if selectedMode == .menu {
             loadMenuItemsIfNeeded()
-        } else if selectedMode == .clipboard {
-            refreshClipboardItems()
         }
         updateSelectionAfterFilterChange()
         DispatchQueue.main.async { [weak self] in
@@ -443,8 +360,7 @@ final class CommandPaletteController: NSObject, ObservableObject, NSWindowDelega
 
     private func isModeAvailable(_ mode: CommandPaletteMode) -> Bool {
         switch mode {
-        case .windows,
-             .clipboard:
+        case .windows:
             return true
         case .menu:
             return isMenuModeAvailable
@@ -506,48 +422,6 @@ final class CommandPaletteController: NSObject, ObservableObject, NSWindowDelega
             if let range = pathLower.range(of: query) {
                 let pos = pathLower.distance(from: pathLower.startIndex, to: range.lowerBound)
                 return (item, 1000 + pos)
-            }
-
-            return nil
-        }
-
-        return scored
-            .sorted { a, b in
-                if a.1 != b.1 { return a.1 < b.1 }
-                if a.0.title.count != b.0.title.count { return a.0.title.count < b.0.title.count }
-                return a.0.title < b.0.title
-            }
-            .map(\.0)
-    }
-
-    private func filterClipboardItems(
-        _ items: [ClipboardPaletteItem],
-        query rawQuery: String
-    ) -> [ClipboardPaletteItem] {
-        let trimmedQuery = rawQuery.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmedQuery.isEmpty {
-            return items
-        }
-        let query = trimmedQuery.lowercased()
-
-        let scored: [(ClipboardPaletteItem, Int)] = items.compactMap { item in
-            let titleLower = item.title.lowercased()
-            let subtitleLower = item.subtitle.lowercased()
-            let kindLower = item.kind.rawValue.lowercased()
-
-            if let range = titleLower.range(of: query) {
-                let pos = titleLower.distance(from: titleLower.startIndex, to: range.lowerBound)
-                return (item, pos)
-            }
-
-            if let range = subtitleLower.range(of: query) {
-                let pos = subtitleLower.distance(from: subtitleLower.startIndex, to: range.lowerBound)
-                return (item, 1000 + pos)
-            }
-
-            if let range = kindLower.range(of: query) {
-                let pos = kindLower.distance(from: kindLower.startIndex, to: range.lowerBound)
-                return (item, 2000 + pos)
             }
 
             return nil
@@ -838,8 +712,6 @@ final class CommandPaletteController: NSObject, ObservableObject, NSWindowDelega
         selectedItemID = nil
         windows = []
         menuItems = []
-        clipboardItems = []
-        isClipboardHistoryEnabled = false
 
         if let restoreTarget {
             _ = focus(target: restoreTarget)
@@ -856,7 +728,6 @@ final class CommandPaletteController: NSObject, ObservableObject, NSWindowDelega
             selectedMode = .menu
             return true
         case "3":
-            selectedMode = .clipboard
             return true
         default:
             return false
@@ -891,20 +762,6 @@ final class CommandPaletteController: NSObject, ObservableObject, NSWindowDelega
                 return nil
             }
             return .pressMenu(menuFocusTarget, item.axElement)
-        case .clipboard:
-            guard let wmController,
-                  isClipboardHistoryEnabled,
-                  case let .clipboard(id)? = selectedItemID,
-                  filteredClipboardItems.contains(where: { $0.id == id })
-            else {
-                return nil
-            }
-            switch trigger {
-            case .primary:
-                return .pasteClipboard(wmController, id, clipboardPasteTarget())
-            case .alternate:
-                return .copyClipboard(wmController, id)
-            }
         }
     }
 
@@ -923,37 +780,6 @@ final class CommandPaletteController: NSObject, ObservableObject, NSWindowDelega
             _ = focus(target: target)
             environment.scheduleMenuAction { [environment] in
                 environment.performMenuAction(element)
-            }
-        case let .copyClipboard(wmController, id):
-            Task { @MainActor [environment] in
-                _ = await environment.copyClipboardItem(wmController, id)
-            }
-        case let .pasteClipboard(wmController, id, target):
-            Task { @MainActor [weak self, environment] in
-                guard await environment.copyClipboardItem(wmController, id),
-                      let self,
-                      let target,
-                      !environment.isLockScreenActive(wmController),
-                      environment.isAccessibilityTrusted(),
-                      true,
-                      self.focus(target: target.focusTarget)
-                else {
-                    return
-                }
-                environment.scheduleClipboardPaste {
-                    guard environment.isAccessibilityTrusted(),
-                          true,
-                          environment.frontmostApplication()?.processIdentifier == target.focusTarget.app.processIdentifier
-                    else {
-                        return
-                    }
-                    if let expectedWindowId = target.expectedWindowId,
-                       environment.focusedWindowID(target.focusTarget.app.processIdentifier) != expectedWindowId
-                    {
-                        return
-                    }
-                    environment.postPasteShortcut()
-                }
             }
         }
     }
@@ -981,57 +807,11 @@ final class CommandPaletteController: NSObject, ObservableObject, NSWindowDelega
         return true
     }
 
-    private func clipboardPasteTarget() -> CommandPaletteClipboardPasteTarget? {
-        guard let restoreFocusTarget,
-              !restoreFocusTarget.app.isTerminated,
-              restoreFocusTarget.app.bundleIdentifier != environment.ownBundleIdentifier(),
-              environment.runningApplication(restoreFocusTarget.app.processIdentifier) != nil
-        else {
-            return nil
-        }
-        return CommandPaletteClipboardPasteTarget(
-            focusTarget: restoreFocusTarget,
-            expectedWindowId: restoreFocusTarget.focusedWindow.flatMap(getWindowId(from:))
-        )
-    }
 
-    func enableClipboardHistory() {
-        guard let wmController else { return }
-        environment.setClipboardHistoryEnabled(wmController, true)
-        isClipboardHistoryEnabled = true
-        refreshClipboardItems()
-    }
 
-    func refreshClipboardItems() {
-        guard let wmController else {
-            clipboardItems = []
-            return
-        }
-        isClipboardHistoryEnabled = environment.isClipboardHistoryEnabled(wmController)
-        clipboardItems = isClipboardHistoryEnabled ? environment.clipboardItems(wmController) : []
-    }
 
-    func copyClipboardItem(_ id: UUID) {
-        guard let wmController else { return }
-        Task { @MainActor [weak self, environment, wmController] in
-            _ = await environment.copyClipboardItem(wmController, id)
-            self?.refreshClipboardItems()
-        }
-    }
 
-    func deleteClipboardItem(_ id: UUID) {
-        guard let wmController else { return }
-        Task { @MainActor [weak self, environment, wmController] in
-            self?.clipboardItems = await environment.deleteClipboardItem(wmController, id)
-        }
-    }
 
-    func clearClipboardHistory() {
-        guard let wmController, environment.confirmClearClipboardHistory() else { return }
-        Task { @MainActor [weak self, environment, wmController] in
-            self?.clipboardItems = await environment.clearClipboardHistory(wmController)
-        }
-    }
 
     private func currentSelectionList() -> [CommandPaletteSelectionID] {
         switch selectedMode {
@@ -1039,9 +819,6 @@ final class CommandPaletteController: NSObject, ObservableObject, NSWindowDelega
             return filteredWindowItems.map { CommandPaletteSelectionID.window($0.id) }
         case .menu:
             return filteredMenuItems.map { CommandPaletteSelectionID.menu($0.id) }
-        case .clipboard:
-            guard isClipboardHistoryEnabled else { return [] }
-            return filteredClipboardItems.map { CommandPaletteSelectionID.clipboard($0.id) }
         }
     }
 
@@ -1208,17 +985,6 @@ private struct CommandPaletteView: View {
                         .foregroundColor(.secondary)
                         .lineLimit(1)
                     Spacer()
-                    if controller.selectedMode == .clipboard,
-                       controller.isClipboardHistoryEnabled,
-                       !controller.clipboardItems.isEmpty
-                    {
-                        Button(action: { controller.clearClipboardHistory() }) {
-                            Image(systemName: "trash")
-                                .font(.system(size: 12, weight: .semibold))
-                        }
-                        .buttonStyle(.plain)
-                        .help("Clear Clipboard History")
-                    }
                 }
             }
             .padding(.horizontal, 16)
@@ -1226,11 +992,7 @@ private struct CommandPaletteView: View {
 
             Divider()
 
-            if controller.selectedMode == .clipboard && !controller.isClipboardHistoryEnabled {
-                CommandPaletteClipboardDisabledView {
-                    controller.enableClipboardHistory()
-                }
-            } else if controller.selectedMode == .menu && controller.isMenuLoading {
+            if controller.selectedMode == .menu && controller.isMenuLoading {
                 CommandPaletteLoadingView(text: "Loading menu items...")
             } else if isEmptyStateVisible {
                 CommandPaletteEmptyStateView(
@@ -1267,24 +1029,6 @@ private struct CommandPaletteView: View {
                                         controller.selectCurrent()
                                     }
                                 }
-                            case .clipboard:
-                                ForEach(controller.filteredClipboardItems) { item in
-                                    CommandPaletteClipboardRow(
-                                        item: item,
-                                        isSelected: controller.selectedItemID == .clipboard(item.id),
-                                        onPaste: {
-                                            controller.selectedItemID = .clipboard(item.id)
-                                            controller.selectCurrent()
-                                        },
-                                        onCopy: {
-                                            controller.copyClipboardItem(item.id)
-                                        },
-                                        onDelete: {
-                                            controller.deleteClipboardItem(item.id)
-                                        }
-                                    )
-                                    .id(CommandPaletteSelectionID.clipboard(item.id))
-                                }
                             }
                         }
                     }
@@ -1312,8 +1056,6 @@ private struct CommandPaletteView: View {
             "Search windows..."
         case .menu:
             "Search menu items..."
-        case .clipboard:
-            "Search clipboard history..."
         }
     }
 
@@ -1325,8 +1067,6 @@ private struct CommandPaletteView: View {
             )
         case .menu:
             controller.menuStatusText
-        case .clipboard:
-            controller.clipboardStatusText
         }
     }
 
@@ -1337,8 +1077,6 @@ private struct CommandPaletteView: View {
         case .menu:
             !controller.isMenuLoading &&
                 (!controller.isMenuModeAvailable || controller.filteredMenuItems.isEmpty)
-        case .clipboard:
-            controller.isClipboardHistoryEnabled && controller.filteredClipboardItems.isEmpty
         }
     }
 
@@ -1348,8 +1086,6 @@ private struct CommandPaletteView: View {
             "macwindow.on.rectangle"
         case .menu:
             controller.isMenuModeAvailable ? "text.magnifyingglass" : "menubar.rectangle"
-        case .clipboard:
-            "clipboard"
         }
     }
 
@@ -1362,8 +1098,6 @@ private struct CommandPaletteView: View {
                 return controller.menuStatusText
             }
             return controller.searchText.isEmpty ? "No menu items available" : "No menu items found"
-        case .clipboard:
-            return controller.searchText.isEmpty ? "No clipboard items available" : "No clipboard items found"
         }
     }
 }
@@ -1504,28 +1238,6 @@ private struct CommandPaletteEmptyStateView: View {
     }
 }
 
-private struct CommandPaletteClipboardDisabledView: View {
-    let onEnable: () -> Void
-
-    var body: some View {
-        VStack(spacing: 12) {
-            Spacer()
-            Image(systemName: "clipboard")
-                .font(.system(size: 30))
-                .foregroundColor(.secondary)
-            Text("Clipboard history is off")
-                .font(.system(size: 13, weight: .medium))
-                .foregroundColor(.secondary)
-            Button(action: onEnable) {
-                Label("Enable", systemImage: "power")
-                    .font(.system(size: 12, weight: .semibold))
-            }
-            .buttonStyle(.borderedProminent)
-            Spacer()
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-}
 
 private struct CommandPaletteWindowRow: View {
     let item: CommandPaletteWindowItem
@@ -1616,73 +1328,3 @@ private struct CommandPaletteMenuRow: View {
     }
 }
 
-private struct CommandPaletteClipboardRow: View {
-    let item: ClipboardPaletteItem
-    let isSelected: Bool
-    let onPaste: () -> Void
-    let onCopy: () -> Void
-    let onDelete: () -> Void
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: symbolName)
-                .font(.system(size: 18, weight: .medium))
-                .foregroundColor(.secondary)
-                .frame(width: 28, height: 28)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(item.title)
-                    .font(.system(size: 14, weight: .medium))
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                Text(item.subtitle)
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-            }
-            .layoutPriority(1)
-            .contentShape(Rectangle())
-            .onTapGesture(perform: onPaste)
-
-            Spacer(minLength: 8)
-
-            HStack(spacing: 10) {
-                Button(action: onCopy) {
-                    Image(systemName: "doc.on.doc")
-                        .frame(width: 18, height: 18)
-                }
-                .buttonStyle(.plain)
-                .help("Copy")
-
-                Button(action: onDelete) {
-                    Image(systemName: "trash")
-                        .frame(width: 18, height: 18)
-                }
-                .buttonStyle(.plain)
-                .help("Delete")
-            }
-            .foregroundColor(.secondary)
-            .frame(width: 56, alignment: .trailing)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .background(isSelected ? Color.accentColor.opacity(0.2) : Color.clear)
-        .contentShape(Rectangle())
-    }
-
-    private var symbolName: String {
-        switch item.kind {
-        case .text:
-            "text.alignleft"
-        case .richText:
-            "doc.richtext"
-        case .html:
-            "chevron.left.forwardslash.chevron.right"
-        case .image:
-            "photo"
-        case .fileURL:
-            "doc"
-        }
-    }
-}

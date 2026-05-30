@@ -2,14 +2,13 @@ import AppKit
 
 @MainActor
 final class StatusBarController: NSObject {
-    nonisolated static let mainAutosaveName = StatusItemPersistence.OwnedItem.main.autosaveName
+    nonisolated static let mainAutosaveName = "NehirMenuBarItem"
 
     private var statusItem: NSStatusItem?
     private var menuBuilder: StatusBarMenuBuilder?
     private var menu: NSMenu?
     private var isRebuildingOwnedItems = false
 
-    private let hiddenBarController: HiddenBarController
     private let settings: SettingsStore
     private let cliManager: AppCLIManager?
     private let statusItemDefaults: UserDefaults
@@ -18,11 +17,9 @@ final class StatusBarController: NSObject {
     init(
         settings: SettingsStore,
         controller: WMController,
-        hiddenBarController: HiddenBarController,
         cliManager: AppCLIManager? = nil,
         statusItemDefaults: UserDefaults = .standard
     ) {
-        self.hiddenBarController = hiddenBarController
         self.settings = settings
         self.cliManager = cliManager
         self.statusItemDefaults = statusItemDefaults
@@ -40,13 +37,8 @@ final class StatusBarController: NSObject {
     private func installOwnedStatusItems() {
         guard statusItem == nil, let controller else { return }
 
-        StatusItemPersistence.repairOwnedRestoreState(
-            defaults: statusItemDefaults,
-            screenFrames: NSScreen.screens.map(\.frame)
-        )
-
         let ownedStatusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        StatusItemPersistence.configureMandatoryItem(ownedStatusItem, as: .main)
+        ownedStatusItem.autosaveName = Self.mainAutosaveName
         statusItem = ownedStatusItem
 
         guard let button = statusItem?.button else { return }
@@ -62,13 +54,6 @@ final class StatusBarController: NSObject {
         self.menuBuilder = menuBuilder
         rebuildMenu()
 
-        hiddenBarController.bind(
-            omniButton: button,
-            onUnsafeOrderingDetected: { [weak self] in
-                self?.rebuildOwnedStatusItemsAfterUnsafeOrdering()
-            }
-        )
-        hiddenBarController.setup()
         refreshWorkspaces()
     }
 
@@ -93,7 +78,7 @@ final class StatusBarController: NSObject {
     }
 
     private func handleRightClick() {
-        controller?.toggleHiddenBar()
+        showMenu()
     }
 
     func refreshMenu() {
@@ -164,7 +149,6 @@ final class StatusBarController: NSObject {
     }
 
     private func cleanupOwnedStatusItems() {
-        hiddenBarController.cleanup()
         if let item = statusItem {
             NSStatusBar.system.removeStatusItem(item)
             statusItem = nil
@@ -178,9 +162,7 @@ final class StatusBarController: NSObject {
         isRebuildingOwnedItems = true
         defer { isRebuildingOwnedItems = false }
 
-        settings.hiddenBarIsCollapsed = false
         cleanupOwnedStatusItems()
-        StatusItemPersistence.clearOwnedRestoreState(defaults: statusItemDefaults)
         installOwnedStatusItems()
     }
 }

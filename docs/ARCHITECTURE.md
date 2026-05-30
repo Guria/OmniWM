@@ -50,7 +50,7 @@ Nehir is built with Swift Package Manager (Swift 6.3.2, strict concurrency). The
 NehirIPC          (zero dependencies — shared IPC protocol models)
     ^         ^
     |          \
-NehirCtl      Nehir + GhosttyKit   (CLI tool)       (main library)
+NehirCtl      NehirIPC         (CLI tool)
                    ^
                    |
                NehirApp              (@main entry point)
@@ -60,7 +60,7 @@ NehirCtl      Nehir + GhosttyKit   (CLI tool)       (main library)
 |--------|---------|--------------|
 | `NehirIPC` | Shared IPC data models and wire format | None |
 | `NehirCtl` | CLI tool (`nehirctl`) | NehirIPC |
-| `Nehir` | Core window manager library | NehirIPC, GhosttyKit, system frameworks |
+| `Nehir` | Core window manager library | NehirIPC, system frameworks |
 | `NehirApp` | Executable wrapper with SwiftUI scene | Nehir |
 
 ### Source Directory Map
@@ -100,9 +100,8 @@ Sources/
 │   │   └── Workspace/               Workspace model, session state,
 │   │                                and runtime coordination (6 files)
 │   ├── IPC/                         IPC server, connections, routing (9 files)
-│   ├── QuakeTerminal/               Drop-down terminal, Ghostty integration (9 files)
 │   └── UI/                          SwiftUI settings, status bar, workspace bar,
-│                                    command palette, and hidden bar
+│                                    command palette
 ├── NehirApp/                       2 files: @main entry + settings redirect
 ├── NehirCtl/                       7 files: CLI parser, IPC client, renderer
 └── NehirIPC/                       5 files: models, wire format, socket path
@@ -114,7 +113,6 @@ Nehir has **zero third-party package dependencies**. All functionality is built 
 
 - **System frameworks**: AppKit, ApplicationServices, Carbon, Metal, MetalKit, QuartzCore
 - **SkyLight**: A private Apple framework for low-latency window server access, linked via `-framework SkyLight` unsafe flag
-- **GhosttyKit**: A local binary xcframework at `Frameworks/GhosttyKit.xcframework` prepared outside git, providing terminal emulation for the Quake Terminal feature
 - **System libraries**: libz, libc++
 
 ### Building & Running
@@ -321,7 +319,7 @@ From creation to destruction, a window passes through these stages:
 5. Focus recovery runs if the destroyed window was focused
 
 **Managed Replacement:**
-Some apps (Ghostty, Safari, browsers) destroy and recreate windows during internal operations. `AXEventHandler` detects these patterns via `ManagedReplacementMetadata` correlation — matching a destroy+create pair within a 150ms grace period to preserve the window's workspace assignment and position.
+Some apps (browsers, terminals) destroy and recreate windows during internal operations. `AXEventHandler` detects these patterns via `ManagedReplacementMetadata` correlation — matching a destroy+create pair within a 150ms grace period to preserve the window's workspace assignment and position.
 
 ### 3.4 The Refresh Pipeline
 
@@ -732,15 +730,13 @@ A lightweight `NSWindow` overlay that draws a rounded rectangle around the focus
 | Feature | Key Files | Description |
 |---------|-----------|-------------|
 | **Overview** | `Core/Overview/OverviewController.swift` | Bird's-eye view of all workspaces with window thumbnails (ScreenCaptureKit), search, drag-to-reorganize |
-| **Quake Terminal** | `QuakeTerminal/QuakeTerminalController.swift` | Drop-down terminal using GhosttyKit. Supports tabs and split panes. Toggles with hotkey. |
 | **Command Palette** | `UI/CommandPalette/CommandPaletteController.swift` | Fuzzy-search interface for windows, commands, and menu items |
 | **Menu Anywhere** | `UI/MenuAnywhere/MenuAnywhereController.swift` | UI controller that uses the Core menu extraction layer to display any app's menu at cursor position |
 | **Workspace Bar** | `UI/WorkspaceBar/WorkspaceBarManager.swift` | Visual workspace indicators with window icons per workspace |
-| **Hidden Bar** | `UI/HiddenBar/HiddenBarController.swift` | Collapsible menu bar icon management |
 | **Scratchpad** | `Core/Workspace/WorkspaceManager.swift` | Tracks the transient scratchpad window via `scratchpadToken()`. Show/hide and focus recovery are coordinated by `WMController`. |
 | **Status Bar** | `UI/StatusBar/StatusBarController.swift` | Menu bar icon with settings access and workspace summary |
 
-Nehir utility windows such as Settings and App Rules still register through `OwnedWindowRegistry`, but that type now acts as a facade over `SurfaceCoordinator` and `SurfaceScene`. The shared surface system assigns each owned UI surface a `SurfaceKind` and `SurfacePolicy`, centralizing hit-testing, screen-capture inclusion, and managed-focus-recovery suppression across overview, workspace bar, border, quake, and utility windows.
+Nehir utility windows such as Settings and App Rules still register through `OwnedWindowRegistry`, but that type now acts as a facade over `SurfaceCoordinator` and `SurfaceScene`. The shared surface system assigns each owned UI surface a `SurfaceKind` and `SurfacePolicy`, centralizing hit-testing, screen-capture inclusion, and managed-focus-recovery suppression across overview, workspace bar, border, and utility windows.
 
 ---
 

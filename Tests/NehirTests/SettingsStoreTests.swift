@@ -50,51 +50,6 @@ struct NehirStoragePathsTests {
     }
 }
 
-@MainActor struct QuakeTerminalSettingsValidationTests {
-    @Test func normalizesQuakeTerminalPercentagesOnAssignment() {
-        let settings = SettingsStore(defaults: makeTestDefaults())
-
-        settings.quakeTerminalWidthPercent = 5
-        settings.quakeTerminalHeightPercent = 150
-
-        #expect(settings.quakeTerminalWidthPercent == 10)
-        #expect(settings.quakeTerminalHeightPercent == 100)
-
-        settings.quakeTerminalWidthPercent = Double.nan
-        settings.quakeTerminalHeightPercent = Double.infinity
-
-        #expect(settings.quakeTerminalWidthPercent == 50)
-        #expect(settings.quakeTerminalHeightPercent == 50)
-    }
-
-    @Test func resetsInvalidQuakeTerminalCustomFrames() {
-        let settings = SettingsStore(defaults: makeTestDefaults())
-
-        settings.quakeTerminalUseCustomFrame = true
-        settings.quakeTerminalCustomFrame = CGRect(x: 0, y: 0, width: 199, height: 400)
-
-        #expect(settings.quakeTerminalUseCustomFrame == false)
-        #expect(settings.quakeTerminalCustomFrame == nil)
-
-        settings.quakeTerminalUseCustomFrame = true
-        settings.quakeTerminalCustomFrame = CGRect(x: 10, y: 20, width: 1200, height: 700)
-
-        #expect(settings.quakeTerminalUseCustomFrame == true)
-        #expect(settings.quakeTerminalCustomFrame == CGRect(x: 10, y: 20, width: 1200, height: 700))
-    }
-
-    @Test func normalizesInvalidQuakeTerminalValuesFromExport() {
-        let settings = SettingsStore(defaults: makeTestDefaults())
-        var export = SettingsExport.defaults()
-        export.quakeTerminalWidthPercent = Double.nan
-        export.quakeTerminalHeightPercent = 150
-
-        settings.applyExport(export, monitors: [])
-
-        #expect(settings.quakeTerminalWidthPercent == 50)
-        #expect(settings.quakeTerminalHeightPercent == 100)
-    }
-}
 
 private func makeSettingsTestMonitor(
     displayId: CGDirectDisplayID,
@@ -381,16 +336,6 @@ struct SettingsExportTests {
         #expect(defaults.statusBarShowWorkspaceName == false)
         #expect(defaults.statusBarShowAppNames == false)
         #expect(defaults.statusBarUseWorkspaceId == false)
-        #expect(defaults.clipboardHistoryEnabled == false)
-        #expect(defaults.clipboardMaxItems == 200)
-        #expect(defaults.clipboardMaxItemBytes == 8_388_608)
-        #expect(defaults.clipboardMaxTotalBytes == 67_108_864)
-        #expect(defaults.quakeTerminalEnabled == true)
-        #expect(defaults.quakeTerminalPosition == QuakeTerminalPosition.center.rawValue)
-        #expect(defaults.quakeTerminalWidthPercent == 50.0)
-        #expect(defaults.quakeTerminalHeightPercent == 50.0)
-        #expect(defaults.quakeTerminalAutoHide == false)
-        #expect(defaults.quakeTerminalMonitorMode == QuakeTerminalMonitorMode.focusedWindow.rawValue)
         #expect(defaults.appearanceMode == AppearanceMode.dark.rawValue)
     }
 }
@@ -714,16 +659,16 @@ struct HotkeySurfaceTests {
         let beforeSettings = try settingsFileSnapshot(settings.settingsFileURL)
         #expect(settings.commandPaletteLastMode == RuntimeStateStore.defaultCommandPaletteLastMode)
 
-        settings.commandPaletteLastMode = .clipboard
+        settings.commandPaletteLastMode = .menu
         settings.flushNow()
 
         let afterSettings = try settingsFileSnapshot(settings.settingsFileURL)
         let runtimeState = RuntimeStateStore(directory: runtimeStateDirectoryForTests(defaults: defaults))
         #expect(afterSettings == beforeSettings)
-        #expect(runtimeState.commandPaletteLastMode == .clipboard)
+        #expect(runtimeState.commandPaletteLastMode == .menu)
 
         let reloaded = SettingsStore(defaults: defaults)
-        #expect(reloaded.commandPaletteLastMode == .clipboard)
+        #expect(reloaded.commandPaletteLastMode == .menu)
     }
 
     @Test func menuStatusHelpersDoNotMentionSettings() {
@@ -746,18 +691,8 @@ struct HotkeySurfaceTests {
         settings.statusBarShowWorkspaceName = true
         settings.statusBarShowAppNames = true
         settings.statusBarUseWorkspaceId = true
-        settings.clipboardHistoryEnabled = true
-        settings.clipboardMaxItems = 33
-        settings.clipboardMaxItemBytes = 4096
-        settings.clipboardMaxTotalBytes = 8192
-        settings.quakeTerminalEnabled = true
-        settings.quakeTerminalPosition = .bottom
-        settings.quakeTerminalWidthPercent = 80
-        settings.quakeTerminalHeightPercent = 55
-        settings.quakeTerminalAnimationDuration = 0.4
-        settings.quakeTerminalAutoHide = false
-        settings.quakeTerminalOpacity = 0.75
-        settings.quakeTerminalMonitorMode = .focusedWindow
+        settings.scrollGestureEnabled = true
+        settings.scrollSensitivity = 33
         settings.flushNow()
 
         let reloaded = SettingsStore(defaults: defaults)
@@ -768,18 +703,8 @@ struct HotkeySurfaceTests {
         #expect(reloaded.statusBarShowWorkspaceName == true)
         #expect(reloaded.statusBarShowAppNames == true)
         #expect(reloaded.statusBarUseWorkspaceId == true)
-        #expect(reloaded.clipboardHistoryEnabled == true)
-        #expect(reloaded.clipboardMaxItems == 33)
-        #expect(reloaded.clipboardMaxItemBytes == 4096)
-        #expect(reloaded.clipboardMaxTotalBytes == 8192)
-        #expect(reloaded.quakeTerminalEnabled == true)
-        #expect(reloaded.quakeTerminalPosition == .bottom)
-        #expect(reloaded.quakeTerminalWidthPercent == 80)
-        #expect(reloaded.quakeTerminalHeightPercent == 55)
-        #expect(reloaded.quakeTerminalAnimationDuration == 0.4)
-        #expect(reloaded.quakeTerminalAutoHide == false)
-        #expect(reloaded.quakeTerminalOpacity == 0.75)
-        #expect(reloaded.quakeTerminalMonitorMode == .focusedWindow)
+        #expect(reloaded.scrollGestureEnabled == true)
+        #expect(reloaded.scrollSensitivity == 33)
     }
 
     @Test func tomlApplyClearsStaleMonitorDisplayIdWhenNameCannotBeResolved() {
@@ -866,19 +791,6 @@ struct SettingsSectionTests {
         #expect(state.windowRestoreCatalog == catalog)
     }
 
-    @Test func hiddenBarCollapseStateRoundTripsThroughRuntimeStateStore() {
-        let defaults = makeTestDefaults()
-        let directory = configurationDirectoryForTests(defaults: defaults)
-        let store = RuntimeStateStore(directory: directory)
-
-        #expect(store.hiddenBarIsCollapsed == RuntimeStateStore.defaultHiddenBarIsCollapsed)
-
-        store.hiddenBarIsCollapsed = false
-        store.flushNow()
-
-        let reloaded = RuntimeStateStore(directory: directory)
-        #expect(reloaded.hiddenBarIsCollapsed == false)
-    }
 
     @Test func commandPaletteLastModeRoundTripsThroughRuntimeStateStore() {
         let defaults = makeTestDefaults()
@@ -887,49 +799,22 @@ struct SettingsSectionTests {
 
         #expect(store.commandPaletteLastMode == RuntimeStateStore.defaultCommandPaletteLastMode)
 
-        store.commandPaletteLastMode = .clipboard
+        store.commandPaletteLastMode = .menu
         store.flushNow()
 
         let reloaded = RuntimeStateStore(directory: directory)
-        #expect(reloaded.commandPaletteLastMode == .clipboard)
+        #expect(reloaded.commandPaletteLastMode == .menu)
     }
 
-    @Test func quakeTerminalCustomFrameRoundTripsThroughRuntimeStateStore() {
-        let defaults = makeTestDefaults()
-        let directory = configurationDirectoryForTests(defaults: defaults)
-        let store = RuntimeStateStore(directory: directory)
-        let frame = CGRect(x: 10, y: 20, width: 1200, height: 700)
 
-        #expect(store.quakeTerminalUseCustomFrame == RuntimeStateStore.defaultQuakeTerminalUseCustomFrame)
-        #expect(store.quakeTerminalCustomFrame == nil)
-
-        store.quakeTerminalUseCustomFrame = true
-        store.quakeTerminalCustomFrame = frame
-        store.flushNow()
-
-        let reloaded = RuntimeStateStore(directory: directory)
-        #expect(reloaded.quakeTerminalUseCustomFrame == true)
-        #expect(reloaded.quakeTerminalCustomFrame == frame)
-    }
-
-    @Test func missingHiddenBarRuntimeKeyUsesDefault() throws {
-        let defaults = makeTestDefaults()
-        let directory = configurationDirectoryForTests(defaults: defaults)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let runtimeURL = directory.appendingPathComponent(RuntimeStateStore.fileName, isDirectory: false)
-        try Data(#"{"commandPaletteLastMode":"clipboard"}"#.utf8).write(to: runtimeURL)
-
-        let reloaded = RuntimeStateStore(directory: directory)
-        #expect(reloaded.hiddenBarIsCollapsed == RuntimeStateStore.defaultHiddenBarIsCollapsed)
-        #expect(reloaded.commandPaletteLastMode == .clipboard)
-    }
 
     @Test func runtimeStatePersistsWithPrivatePermissions() throws {
         let defaults = makeTestDefaults()
         let directory = runtimeStateDirectoryForTests(defaults: defaults)
         let store = RuntimeStateStore(directory: directory, deferSaves: false)
 
-        store.hiddenBarIsCollapsed = false
+        // Trigger a write so the file is materialized on disk
+        store.save(store.load())
 
         let fileURL = directory.appendingPathComponent(RuntimeStateStore.fileName, isDirectory: false)
         let directoryMode = try #require(
@@ -944,170 +829,7 @@ struct SettingsSectionTests {
     }
 }
 
-@MainActor struct HiddenBarRuntimeStateSettingsTests {
-    @Test func hiddenBarChangesWriteRuntimeStateWithoutRewritingSettingsFile() throws {
-        let defaults = makeTestDefaults()
-        let settings = SettingsStore(defaults: defaults)
-        let beforeSettings = try settingsFileSnapshot(settings.settingsFileURL)
 
-        settings.hiddenBarIsCollapsed = false
-        settings.flushNow()
-
-        let afterSettings = try settingsFileSnapshot(settings.settingsFileURL)
-        let runtimeState = RuntimeStateStore(directory: runtimeStateDirectoryForTests(defaults: defaults))
-
-        #expect(afterSettings == beforeSettings)
-        #expect(runtimeState.hiddenBarIsCollapsed == false)
-    }
-
-    @Test func hiddenBarFlushWritesDeferredRuntimeState() {
-        let defaults = makeTestDefaults()
-        let configurationDirectory = configurationDirectoryForTests(defaults: defaults)
-        let runtimeStateDirectory = runtimeStateDirectoryForTests(defaults: defaults)
-        let settings = SettingsStore(
-            persistence: SettingsFilePersistence(directory: configurationDirectory, startWatching: false, deferSaves: false),
-            runtimeState: RuntimeStateStore(directory: runtimeStateDirectory)
-        )
-
-        settings.hiddenBarIsCollapsed = false
-        settings.flushNow()
-
-        let reloaded = RuntimeStateStore(directory: runtimeStateDirectory)
-        #expect(reloaded.hiddenBarIsCollapsed == false)
-    }
-
-    @Test func hiddenBarRuntimeStateSurvivesSettingsStoreReload() {
-        let defaults = makeTestDefaults()
-        let configurationDirectory = configurationDirectoryForTests(defaults: defaults)
-        let runtimeStateDirectory = runtimeStateDirectoryForTests(defaults: defaults)
-        let settings = SettingsStore(defaults: defaults)
-
-        settings.hiddenBarIsCollapsed = false
-        settings.flushNow()
-
-        let reloaded = SettingsStore(
-            persistence: SettingsFilePersistence(directory: configurationDirectory, startWatching: false, deferSaves: false),
-            runtimeState: RuntimeStateStore(directory: runtimeStateDirectory, deferSaves: false)
-        )
-
-        #expect(reloaded.hiddenBarIsCollapsed == false)
-    }
-
-    @Test func stateTOMLKeysDoNotOverrideRuntimeState() throws {
-        let defaults = makeTestDefaults()
-        let configurationDirectory = configurationDirectoryForTests(defaults: defaults)
-        let runtimeStateDirectory = runtimeStateDirectoryForTests(defaults: defaults)
-        var export = SettingsExport.defaults()
-        export.focusFollowsWindowToMonitor = true
-        let runtimeState = RuntimeStateStore(directory: runtimeStateDirectory, deferSaves: false)
-        runtimeState.commandPaletteLastMode = .menu
-        var toml = try #require(String(data: SettingsTOMLCodec.encode(export), encoding: .utf8))
-        toml += "\n[state]\ncommandPaletteLastMode = \"clipboard\"\nhiddenBarIsCollapsed = false\n"
-        try #require(toml.contains("hiddenBarIsCollapsed = false"))
-        try #require(toml.contains("commandPaletteLastMode = \"clipboard\""))
-        let settingsURL = configurationDirectory.appendingPathComponent("settings.toml", isDirectory: false)
-        try FileManager.default.createDirectory(at: configurationDirectory, withIntermediateDirectories: true)
-        try Data(toml.utf8).write(to: settingsURL)
-
-        let settings = SettingsStore(
-            persistence: SettingsFilePersistence(directory: configurationDirectory, startWatching: false, deferSaves: false),
-            runtimeState: RuntimeStateStore(directory: runtimeStateDirectory, deferSaves: false)
-        )
-
-        #expect(settings.focusFollowsWindowToMonitor)
-        #expect(settings.commandPaletteLastMode == .menu)
-        #expect(settings.hiddenBarIsCollapsed == RuntimeStateStore.defaultHiddenBarIsCollapsed)
-    }
-
-    @Test func externalSettingsReloadDoesNotChangeRuntimeBackedUIState() async throws {
-        let defaults = makeTestDefaults()
-        let configurationDirectory = configurationDirectoryForTests(defaults: defaults)
-        let runtimeStateDirectory = runtimeStateDirectoryForTests(defaults: defaults)
-        let settings = SettingsStore(
-            persistence: SettingsFilePersistence(directory: configurationDirectory),
-            runtimeState: RuntimeStateStore(directory: runtimeStateDirectory)
-        )
-        settings.commandPaletteLastMode = .clipboard
-        settings.hiddenBarIsCollapsed = false
-        settings.flushNow()
-
-        var export = settings.toExport()
-        export.focusFollowsWindowToMonitor = true
-        try writeSettingsExport(export, to: settings.settingsFileURL)
-
-        let reloaded = await waitForConditionForTests(
-            timeoutNanoseconds: 20_000_000_000
-        ) {
-            settings.focusFollowsWindowToMonitor == true
-        }
-
-        #expect(reloaded)
-        #expect(settings.commandPaletteLastMode == .clipboard)
-        #expect(settings.hiddenBarIsCollapsed == false)
-    }
-}
-
-@MainActor struct QuakeTerminalRuntimeStateSettingsTests {
-    @Test func quakeCustomFrameChangesWriteRuntimeStateWithoutRewritingSettingsFile() throws {
-        let defaults = makeTestDefaults()
-        let settings = SettingsStore(defaults: defaults)
-        let frame = CGRect(x: 10, y: 20, width: 1200, height: 700)
-        let beforeSettings = try settingsFileSnapshot(settings.settingsFileURL)
-
-        settings.quakeTerminalUseCustomFrame = true
-        settings.quakeTerminalCustomFrame = frame
-        settings.flushNow()
-
-        let afterSettings = try settingsFileSnapshot(settings.settingsFileURL)
-        let runtimeState = RuntimeStateStore(directory: runtimeStateDirectoryForTests(defaults: defaults))
-
-        #expect(afterSettings == beforeSettings)
-        #expect(runtimeState.quakeTerminalUseCustomFrame == true)
-        #expect(runtimeState.quakeTerminalCustomFrame == frame)
-
-        let reloaded = SettingsStore(defaults: defaults)
-        #expect(reloaded.quakeTerminalUseCustomFrame == true)
-        #expect(reloaded.quakeTerminalCustomFrame == frame)
-    }
-
-    @Test func quakeCustomFrameResetWritesRuntimeStateWithoutRewritingSettingsFile() throws {
-        let defaults = makeTestDefaults()
-        let runtimeState = RuntimeStateStore(directory: runtimeStateDirectoryForTests(defaults: defaults), deferSaves: false)
-        runtimeState.quakeTerminalUseCustomFrame = true
-        runtimeState.quakeTerminalCustomFrame = CGRect(x: 10, y: 20, width: 1200, height: 700)
-        let settings = SettingsStore(defaults: defaults)
-        let beforeSettings = try settingsFileSnapshot(settings.settingsFileURL)
-
-        settings.resetQuakeTerminalCustomFrame()
-        settings.flushNow()
-
-        let afterSettings = try settingsFileSnapshot(settings.settingsFileURL)
-        let reloadedRuntimeState = RuntimeStateStore(directory: runtimeStateDirectoryForTests(defaults: defaults))
-
-        #expect(afterSettings == beforeSettings)
-        #expect(reloadedRuntimeState.quakeTerminalUseCustomFrame == false)
-        #expect(reloadedRuntimeState.quakeTerminalCustomFrame == nil)
-    }
-}
-
-@MainActor struct ClipboardHistoryStoragePathTests {
-    @Test func controllerUsesStateDirectoryForClipboardHistory() {
-        let defaults = makeTestDefaults()
-        let settings = SettingsStore(defaults: defaults)
-        let stateDirectory = runtimeStateDirectoryForTests(defaults: defaults)
-        let controller = WMController(settings: settings, clipboardHistoryDirectory: stateDirectory)
-        let configuration = controller.clipboardHistoryConfiguration()
-
-        #expect(configuration.storageDirectory == stateDirectory)
-        #expect(
-            configuration.storageURL == stateDirectory.appendingPathComponent(
-                ClipboardHistoryConfiguration.fileName,
-                isDirectory: false
-            )
-        )
-        #expect(configuration.storageDirectory != settings.settingsFileURL.deletingLastPathComponent())
-    }
-}
 
 @MainActor struct SettingsFilePersistenceTests {
     @Test func missingFileMaterializesDefaults() {

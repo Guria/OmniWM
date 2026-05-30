@@ -26,25 +26,6 @@ private func makeCommandPaletteWindowItem(windowId: Int) -> CommandPaletteWindow
     )
 }
 
-private func makeCommandPaletteClipboardItem(
-    id: UUID = UUID(),
-    title: String,
-    subtitle: String = "Test Source",
-    kind: ClipboardContentKind = .text,
-    sourceBundleIdentifier: String? = "com.example.source",
-    byteCount: Int = 8
-) -> ClipboardPaletteItem {
-    ClipboardPaletteItem(
-        id: id,
-        title: title,
-        subtitle: subtitle,
-        kind: kind,
-        sourceBundleIdentifier: sourceBundleIdentifier,
-        lastCopiedAt: Date(timeIntervalSince1970: 1_700_000_000),
-        numberOfCopies: 1,
-        byteCount: byteCount
-    )
-}
 
 @MainActor
 private func makeCommandPaletteSummonAnchor(
@@ -477,13 +458,6 @@ private func makeCommandPaletteAppSnapshot(
         #expect(controller.selectedMode == .menu)
     }
 
-    @Test func command3SwitchesToClipboardMode() {
-        let controller = CommandPaletteController()
-        controller.selectedMode = .windows
-
-        #expect(controller.handleModeShortcutForTests("3") == true)
-        #expect(controller.selectedMode == .clipboard)
-    }
 
     @Test func command1SwitchesBackToWindowsMode() {
         let controller = CommandPaletteController()
@@ -508,10 +482,6 @@ private func makeCommandPaletteAppSnapshot(
         #expect(
             CommandPaletteController.modeHint(for: .menu)
                 == .init(title: "Menu", shortcut: "⌘2")
-        )
-        #expect(
-            CommandPaletteController.modeHint(for: .clipboard)
-                == .init(title: "Clipboard", shortcut: "⌘3")
         )
     }
 
@@ -543,30 +513,6 @@ private func makeCommandPaletteAppSnapshot(
         #expect(controller.selectionTriggerForTests(keyCode: 76, modifierFlags: .shift) == .alternate)
     }
 
-    @Test func persistedClipboardModeReopensWhenAvailable() {
-        let item = makeCommandPaletteClipboardItem(title: "Sprint Notes")
-        var environment = CommandPaletteEnvironment()
-        environment.activateNehir = {}
-        environment.frontmostApplication = { nil }
-        environment.isClipboardHistoryEnabled = { _ in true }
-        environment.clipboardItems = { _ in [item] }
-
-        let controller = CommandPaletteController(environment: environment)
-        let wmController = makeCommandPaletteTestWMController()
-        wmController.settings.commandPaletteLastMode = .clipboard
-
-        defer {
-            if controller.isVisible {
-                controller.toggle(wmController: wmController)
-            }
-        }
-
-        controller.toggle(wmController: wmController)
-
-        #expect(controller.selectedMode == .clipboard)
-        #expect(controller.filteredClipboardItems == [item])
-        #expect(controller.selectedItemID == .clipboard(item.id))
-    }
 
     @Test func persistedMenuModeFallsBackToWindowsWhenUnavailable() {
         var environment = CommandPaletteEnvironment()
@@ -588,174 +534,10 @@ private func makeCommandPaletteAppSnapshot(
         #expect(controller.selectedMode == .windows)
     }
 
-    @Test func clipboardModeFiltersAndSelectsLightweightSnapshots() {
-        let textItem = makeCommandPaletteClipboardItem(
-            title: "Launch notes",
-            subtitle: "com.example.notes",
-            kind: .text
-        )
-        let imageItem = makeCommandPaletteClipboardItem(
-            title: "Screenshot",
-            subtitle: "com.example.preview",
-            kind: .image
-        )
-        var environment = CommandPaletteEnvironment()
-        environment.activateNehir = {}
-        environment.frontmostApplication = { nil }
-        environment.isClipboardHistoryEnabled = { _ in true }
-        environment.clipboardItems = { _ in [textItem, imageItem] }
 
-        let controller = CommandPaletteController(environment: environment)
-        let wmController = makeCommandPaletteTestWMController()
-        wmController.settings.commandPaletteLastMode = .clipboard
 
-        defer {
-            if controller.isVisible {
-                controller.toggle(wmController: wmController)
-            }
-        }
 
-        controller.toggle(wmController: wmController)
-        controller.searchText = "image"
 
-        #expect(controller.filteredClipboardItems == [imageItem])
-        #expect(controller.selectedItemID == .clipboard(imageItem.id))
-    }
-
-    @Test func clipboardEnterCopiesBeforeNoTargetFallback() async {
-        let item = makeCommandPaletteClipboardItem(title: "Copy only")
-        var copiedIDs: [UUID] = []
-        var didPostPaste = false
-        var environment = CommandPaletteEnvironment()
-        environment.activateNehir = {}
-        environment.frontmostApplication = { nil }
-        environment.isClipboardHistoryEnabled = { _ in true }
-        environment.clipboardItems = { _ in [item] }
-        environment.copyClipboardItem = { _, id in
-            copiedIDs.append(id)
-            return true
-        }
-        environment.postPasteShortcut = {
-            didPostPaste = true
-        }
-
-        let controller = CommandPaletteController(environment: environment)
-        let wmController = makeCommandPaletteTestWMController()
-        wmController.settings.commandPaletteLastMode = .clipboard
-
-        controller.toggle(wmController: wmController)
-        controller.selectCurrent()
-        try? await Task.sleep(for: .milliseconds(10))
-
-        #expect(copiedIDs == [item.id])
-        #expect(didPostPaste == false)
-        #expect(controller.isVisible == false)
-    }
-
-    @Test func clipboardShiftEnterCopiesWithoutPasting() async {
-        let item = makeCommandPaletteClipboardItem(title: "Shift copy")
-        var copiedIDs: [UUID] = []
-        var didPostPaste = false
-        var environment = CommandPaletteEnvironment()
-        environment.activateNehir = {}
-        environment.frontmostApplication = { NSRunningApplication.current }
-        environment.runningApplication = { pid in
-            pid == NSRunningApplication.current.processIdentifier ? NSRunningApplication.current : nil
-        }
-        environment.ownBundleIdentifier = { "com.nehir.tests" }
-        environment.isClipboardHistoryEnabled = { _ in true }
-        environment.clipboardItems = { _ in [item] }
-        environment.copyClipboardItem = { _, id in
-            copiedIDs.append(id)
-            return true
-        }
-        environment.postPasteShortcut = {
-            didPostPaste = true
-        }
-
-        let controller = CommandPaletteController(environment: environment)
-        let wmController = makeCommandPaletteTestWMController()
-        wmController.settings.commandPaletteLastMode = .clipboard
-
-        controller.toggle(wmController: wmController)
-        controller.selectCurrent(trigger: .alternate)
-        try? await Task.sleep(for: .milliseconds(10))
-
-        #expect(copiedIDs == [item.id])
-        #expect(didPostPaste == false)
-    }
-
-    @Test func clipboardRowActionsKeepPaletteOpen() async {
-        let item = makeCommandPaletteClipboardItem(title: "Delete me")
-        var deletedIDs: [UUID] = []
-        var environment = CommandPaletteEnvironment()
-        environment.activateNehir = {}
-        environment.frontmostApplication = { nil }
-        environment.isClipboardHistoryEnabled = { _ in true }
-        environment.clipboardItems = { _ in [item] }
-        environment.deleteClipboardItem = { _, id in
-            deletedIDs.append(id)
-            return []
-        }
-
-        let controller = CommandPaletteController(environment: environment)
-        let wmController = makeCommandPaletteTestWMController()
-        wmController.settings.commandPaletteLastMode = .clipboard
-
-        defer {
-            if controller.isVisible {
-                controller.toggle(wmController: wmController)
-            }
-        }
-
-        controller.toggle(wmController: wmController)
-        controller.deleteClipboardItem(item.id)
-        try? await Task.sleep(for: .milliseconds(10))
-
-        #expect(deletedIDs == [item.id])
-        #expect(controller.isVisible)
-        #expect(controller.filteredClipboardItems.isEmpty)
-    }
-
-    @Test func clipboardClearRequiresConfirmation() async {
-        let item = makeCommandPaletteClipboardItem(title: "Keep unless confirmed")
-        var clearCount = 0
-        var shouldConfirm = false
-        var environment = CommandPaletteEnvironment()
-        environment.activateNehir = {}
-        environment.frontmostApplication = { nil }
-        environment.isClipboardHistoryEnabled = { _ in true }
-        environment.clipboardItems = { _ in [item] }
-        environment.confirmClearClipboardHistory = { shouldConfirm }
-        environment.clearClipboardHistory = { _ in
-            clearCount += 1
-            return []
-        }
-
-        let controller = CommandPaletteController(environment: environment)
-        let wmController = makeCommandPaletteTestWMController()
-        wmController.settings.commandPaletteLastMode = .clipboard
-
-        defer {
-            if controller.isVisible {
-                controller.toggle(wmController: wmController)
-            }
-        }
-
-        controller.toggle(wmController: wmController)
-        controller.clearClipboardHistory()
-        try? await Task.sleep(for: .milliseconds(10))
-
-        #expect(clearCount == 0)
-        #expect(controller.filteredClipboardItems == [item])
-
-        shouldConfirm = true
-        controller.clearClipboardHistory()
-        try? await Task.sleep(for: .milliseconds(10))
-
-        #expect(clearCount == 1)
-        #expect(controller.filteredClipboardItems.isEmpty)
-    }
 
     @Test func resolveSummonAnchorFallsBackToLastFocusedMemory() {
         let wmController = makeCommandPaletteTestWMController()

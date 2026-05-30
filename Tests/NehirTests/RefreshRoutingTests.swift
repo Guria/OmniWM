@@ -148,7 +148,7 @@ private func makeRefreshTestStatusBarController(_ controller: WMController) -> S
     let statusBarController = StatusBarController(
         settings: controller.settings,
         controller: controller,
-        hiddenBarController: HiddenBarController(settings: controller.settings)
+        
     )
     controller.statusBarController = statusBarController
     return statusBarController

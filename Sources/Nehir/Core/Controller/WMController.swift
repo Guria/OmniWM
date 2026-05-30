@@ -119,23 +119,6 @@ final class WMController {
     @ObservationIgnored
     private var hiddenWorkspaceBarMonitorIds: Set<Monitor.ID> = []
     @ObservationIgnored
-    private let hiddenBarController: HiddenBarController
-    @ObservationIgnored
-    private lazy var quakeTerminalController: QuakeTerminalController = .init(
-        settings: settings,
-        motionPolicy: motionPolicy,
-        captureRestoreTarget: { [weak self] in
-            guard let self else { return nil }
-            return self.captureQuakeTerminalRestoreTarget()
-        },
-        restoreFocusTarget: { [weak self] target in
-            self?.restoreQuakeTerminalFocus(to: target)
-        },
-        focusedWindowScreenProvider: { [weak self] in
-            self?.focusedManagedWindowScreenForQuakeTerminal()
-        }
-    )
-    @ObservationIgnored
     private lazy var commandPaletteController: CommandPaletteController = .init(motionPolicy: motionPolicy)
 
     var isTransferringWindow: Bool = false
@@ -165,8 +148,6 @@ final class WMController {
         orderWindow: windowFocusOperations.orderWindow
     )
     @ObservationIgnored
-    private lazy var clipboardHistoryService = ClipboardHistoryService(configuration: clipboardHistoryConfiguration())
-    @ObservationIgnored
     private(set) lazy var focusNotificationDispatcher = FocusNotificationDispatcher(controller: self)
     @ObservationIgnored
     var hasStartedServices = false
@@ -185,21 +166,16 @@ final class WMController {
 
     let animationClock = AnimationClock()
     let motionPolicy: MotionPolicy
-    private let clipboardHistoryDirectory: URL
     private let windowFocusOperations: WindowFocusOperations
     weak var statusBarController: StatusBarController?
 
     init(
         settings: SettingsStore,
-        hiddenBarController: HiddenBarController? = nil,
-        clipboardHistoryDirectory: URL = NehirStoragePaths.live.stateDirectory,
         windowFocusOperations: WindowFocusOperations = .live,
         ownedWindowRegistry: OwnedWindowRegistry = .shared
     ) {
         self.settings = settings
         motionPolicy = MotionPolicy(animationsEnabled: settings.animationsEnabled)
-        self.hiddenBarController = hiddenBarController ?? HiddenBarController(settings: settings)
-        self.clipboardHistoryDirectory = clipboardHistoryDirectory
         self.windowFocusOperations = windowFocusOperations
         self.ownedWindowRegistry = ownedWindowRegistry
         workspaceManager = WorkspaceManager(settings: settings)
@@ -286,15 +262,11 @@ final class WMController {
 
         setWorkspaceBarEnabled(settings.workspaceBarEnabled)
         setPreventSleepEnabled(settings.preventSleepEnabled)
-        setQuakeTerminalEnabled(settings.quakeTerminalEnabled)
-        syncClipboardHistoryService()
 
         // External edits to settings.toml otherwise stop here at refreshStatusBar
         // and skip subsystems that read settings only at trigger time. Push the
         // remaining live values explicitly so editor saves take effect without
         // an app relaunch.
-        quakeTerminalController.applyGeometryToVisibleWindow()
-        quakeTerminalController.reloadOpacityConfig()
         updateWorkspaceBarSettings()
         _ = syncMouseWarpPolicy()
 
@@ -391,10 +363,6 @@ final class WMController {
         }
     }
 
-    func toggleHiddenBar() {
-        hiddenBarController.toggle()
-    }
-
     @discardableResult
     func toggleWorkspaceBarVisibility() -> Bool {
         pruneHiddenWorkspaceBarMonitorIds()
@@ -413,23 +381,6 @@ final class WMController {
         workspaceBarManager.setup(controller: self, settings: settings)
         layoutRefreshController.requestRelayout(reason: .monitorSettingsChanged)
         return true
-    }
-
-    func setQuakeTerminalEnabled(_ enabled: Bool) {
-        if enabled {
-            quakeTerminalController.setup()
-        } else {
-            quakeTerminalController.cleanup()
-        }
-    }
-
-    func toggleQuakeTerminal() {
-        guard settings.quakeTerminalEnabled else { return }
-        quakeTerminalController.toggle()
-    }
-
-    func reloadQuakeTerminalOpacity() {
-        quakeTerminalController.reloadOpacityConfig()
     }
 
     func requestWorkspaceBarRefresh() {
@@ -777,20 +728,6 @@ final class WMController {
     func configureWorkspaceBarManagerForTests(monitors: [Monitor]) {
         workspaceBarManager.monitorProvider = { monitors }
         workspaceBarManager.screenProvider = { _ in nil }
-    }
-
-    func configureQuakeTransitionForTests(
-        visible: Bool,
-        isTransitioning: Bool
-    ) {
-        quakeTerminalController.configureTransitionStateForTests(
-            visible: visible,
-            isTransitioning: isTransitioning
-        )
-    }
-
-    func quakeTerminalIsTransitioningForTests() -> Bool {
-        quakeTerminalController.isTransitioningForTests
     }
 
     func enableNiriLayout(
@@ -1386,65 +1323,6 @@ final class WMController {
             return frontmostToken ?? focusedToken
         }
         return focusedToken ?? frontmostToken
-    }
-
-    func captureQuakeTerminalRestoreTarget() -> QuakeTerminalRestoreTarget? {
-        if let target = currentKeyboardFocusTargetForRendering() {
-            return target.isManaged ? .managed(target.token) : .external(target)
-        }
-
-        guard let frontmostToken = focusedOrFrontmostWindowTokenForAutomation(
-            preferFrontmostWhenNonManagedFocusActive: true
-        ) else {
-            return nil
-        }
-
-        if workspaceManager.entry(for: frontmostToken) != nil {
-            return .managed(frontmostToken)
-        }
-
-        guard let axRef = axEventHandler.axWindowRefProvider?(UInt32(frontmostToken.windowId), frontmostToken.pid)
-            ?? AXWindowService.axWindowRef(for: UInt32(frontmostToken.windowId), pid: frontmostToken.pid)
-        else {
-            return nil
-        }
-
-        return .external(
-            KeyboardFocusTarget(
-                token: frontmostToken,
-                axRef: axRef,
-                workspaceId: nil,
-                isManaged: false
-            )
-        )
-    }
-
-    func focusedManagedWindowScreenForQuakeTerminal() -> NSScreen? {
-        guard let token = focusedOrFrontmostWindowTokenForAutomation(
-            preferFrontmostWhenNonManagedFocusActive: true
-        ),
-            let entry = workspaceManager.entry(for: token)
-        else {
-            return nil
-        }
-
-        if let monitorId = entry.observedState.monitorId
-            ?? entry.desiredState.monitorId
-            ?? workspaceManager.monitorId(for: entry.workspaceId),
-            let screen = screen(for: monitorId)
-        {
-            return screen
-        }
-
-        if let frame = entry.observedState.frame
-            ?? entry.desiredState.floatingFrame
-            ?? entry.floatingState?.lastFrame,
-            let monitor = frame.center.monitorApproximation(in: workspaceManager.monitors)
-        {
-            return screen(for: monitor.id)
-        }
-
-        return nil
     }
 
     private func screen(for monitorId: Monitor.ID) -> NSScreen? {
@@ -2348,41 +2226,6 @@ final class WMController {
         commandPaletteController.toggle(wmController: self)
     }
 
-    func clipboardPaletteItems() -> [ClipboardPaletteItem] {
-        clipboardHistoryService.paletteItems
-    }
-
-    func setClipboardHistoryEnabled(_ enabled: Bool) {
-        settings.clipboardHistoryEnabled = enabled
-        syncClipboardHistoryService()
-    }
-
-    func copyClipboardItem(id: UUID) async -> Bool {
-        await clipboardHistoryService.copyItemToPasteboard(id: id)
-    }
-
-    func deleteClipboardItem(id: UUID) async -> [ClipboardPaletteItem] {
-        await clipboardHistoryService.deleteItem(id: id)
-    }
-
-    func clearClipboardHistory() async -> [ClipboardPaletteItem] {
-        await clipboardHistoryService.clearHistory()
-    }
-
-    private func syncClipboardHistoryService() {
-        clipboardHistoryService.updateConfiguration(clipboardHistoryConfiguration())
-    }
-
-    func clipboardHistoryConfiguration() -> ClipboardHistoryConfiguration {
-        ClipboardHistoryConfiguration(
-            isEnabled: settings.clipboardHistoryEnabled,
-            maxItems: settings.clipboardMaxItems,
-            maxItemBytes: settings.clipboardMaxItemBytes,
-            maxTotalBytes: settings.clipboardMaxTotalBytes,
-            storageDirectory: clipboardHistoryDirectory
-        )
-    }
-
     func openMenuAnywhere() {
         windowActionHandler.openMenuAnywhere()
     }
@@ -2653,16 +2496,6 @@ extension WMController {
         lockScreenObserver.isFrontmostAppLockScreen()
     }
 
-    func isPointInQuakeTerminal(_ point: CGPoint) -> Bool {
-        guard settings.quakeTerminalEnabled,
-              quakeTerminalController.visible,
-              let window = quakeTerminalController.window
-        else {
-            return false
-        }
-        return window.frame.contains(point)
-    }
-
     func isPointInOwnWindow(_ point: CGPoint) -> Bool {
         ownedWindowRegistry.contains(point: point)
     }
@@ -2783,43 +2616,6 @@ extension WMController {
                 in: workspaceId,
                 onMonitor: workspaceManager.monitorId(for: workspaceId)
             )
-        }
-    }
-
-    func restoreQuakeTerminalFocus(to target: QuakeTerminalRestoreTarget) {
-        switch target {
-        case let .managed(token):
-            guard workspaceManager.entry(for: token) != nil else { return }
-            focusWindow(token)
-
-        case let .external(target):
-            if workspaceManager.entry(for: target.token) != nil {
-                focusWindow(target.token)
-                return
-            }
-            guard !isLockScreenActive else { return }
-            if hasStartedServices {
-                guard !isFrontmostAppLockScreen() else { return }
-            }
-
-            let pid = target.pid
-            guard let app = NSRunningApplication(processIdentifier: pid),
-                  !app.isTerminated
-            else {
-                return
-            }
-
-            if let axRef = axEventHandler.axWindowRefProvider?(UInt32(target.windowId), pid)
-                ?? AXWindowService.axWindowRef(for: UInt32(target.windowId), pid: pid)
-            {
-                performWindowFronting(
-                    pid: pid,
-                    windowId: target.windowId,
-                    axRef: axRef
-                )
-            } else {
-                windowFocusOperations.activateApp(pid)
-            }
         }
     }
 

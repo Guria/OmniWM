@@ -9,7 +9,6 @@ enum SurfaceKind: String, Equatable {
     case resizePlaceholder
     case tabbedColumnOverlay
     case utility
-    case quake
 }
 
 enum HitTestPolicy: Equatable {

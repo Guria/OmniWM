@@ -22,8 +22,6 @@ struct CanonicalTOMLConfig: Codable, Equatable {
     var workspaceBar: WorkspaceBar
     var gestures: Gestures
     var statusBar: StatusBar
-    var clipboard: Clipboard
-    var quakeTerminal: QuakeTerminal
     var appearance: Appearance
 
     struct General: Codable, Equatable {
@@ -140,24 +138,6 @@ struct CanonicalTOMLConfig: Codable, Equatable {
         var useWorkspaceId: Bool
     }
 
-    struct Clipboard: Codable, Equatable {
-        var historyEnabled: Bool
-        var maxItems: Int
-        var maxItemBytes: Int
-        var maxTotalBytes: Int
-    }
-
-    struct QuakeTerminal: Codable, Equatable {
-        var enabled: Bool
-        var position: String
-        var widthPercent: Double
-        var heightPercent: Double
-        var animationDuration: Double
-        var autoHide: Bool
-        var opacity: Double?
-        var monitorMode: String?
-    }
-
     struct Appearance: Codable, Equatable {
         var mode: String
     }
@@ -240,22 +220,6 @@ extension CanonicalTOMLConfig {
             showAppNames: export.statusBarShowAppNames,
             useWorkspaceId: export.statusBarUseWorkspaceId
         )
-        clipboard = Clipboard(
-            historyEnabled: export.clipboardHistoryEnabled,
-            maxItems: export.clipboardMaxItems,
-            maxItemBytes: export.clipboardMaxItemBytes,
-            maxTotalBytes: export.clipboardMaxTotalBytes
-        )
-        quakeTerminal = QuakeTerminal(
-            enabled: export.quakeTerminalEnabled,
-            position: export.quakeTerminalPosition,
-            widthPercent: export.quakeTerminalWidthPercent,
-            heightPercent: export.quakeTerminalHeightPercent,
-            animationDuration: export.quakeTerminalAnimationDuration,
-            autoHide: export.quakeTerminalAutoHide,
-            opacity: export.quakeTerminalOpacity,
-            monitorMode: export.quakeTerminalMonitorMode
-        )
         appearance = Appearance(mode: export.appearanceMode)
     }
 
@@ -321,18 +285,6 @@ extension CanonicalTOMLConfig {
             statusBarShowAppNames: statusBar.showAppNames,
             statusBarUseWorkspaceId: statusBar.useWorkspaceId,
             animationsEnabled: general.animationsEnabled,
-            clipboardHistoryEnabled: clipboard.historyEnabled,
-            clipboardMaxItems: clipboard.maxItems,
-            clipboardMaxItemBytes: clipboard.maxItemBytes,
-            clipboardMaxTotalBytes: clipboard.maxTotalBytes,
-            quakeTerminalEnabled: quakeTerminal.enabled,
-            quakeTerminalPosition: quakeTerminal.position,
-            quakeTerminalWidthPercent: quakeTerminal.widthPercent,
-            quakeTerminalHeightPercent: quakeTerminal.heightPercent,
-            quakeTerminalAnimationDuration: quakeTerminal.animationDuration,
-            quakeTerminalAutoHide: quakeTerminal.autoHide,
-            quakeTerminalOpacity: quakeTerminal.opacity,
-            quakeTerminalMonitorMode: quakeTerminal.monitorMode,
             appearanceMode: appearance.mode
         )
     }
@@ -353,8 +305,6 @@ extension CanonicalTOMLConfig {
         workspaceBar = try container.decodeWithDefault(WorkspaceBar.self, forKey: .workspaceBar, default: d.workspaceBar)
         gestures = try container.decodeWithDefault(Gestures.self, forKey: .gestures, default: d.gestures)
         statusBar = try container.decodeWithDefault(StatusBar.self, forKey: .statusBar, default: d.statusBar)
-        clipboard = try container.decodeWithDefault(Clipboard.self, forKey: .clipboard, default: d.clipboard)
-        quakeTerminal = try container.decodeWithDefault(QuakeTerminal.self, forKey: .quakeTerminal, default: d.quakeTerminal)
         appearance = try container.decodeWithDefault(Appearance.self, forKey: .appearance, default: d.appearance)
     }
 }
@@ -488,32 +438,6 @@ extension CanonicalTOMLConfig.StatusBar {
         showWorkspaceName = try container.decodeWithDefault(Bool.self, forKey: .showWorkspaceName, default: d.showWorkspaceName)
         showAppNames = try container.decodeWithDefault(Bool.self, forKey: .showAppNames, default: d.showAppNames)
         useWorkspaceId = try container.decodeWithDefault(Bool.self, forKey: .useWorkspaceId, default: d.useWorkspaceId)
-    }
-}
-
-extension CanonicalTOMLConfig.Clipboard {
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        let d = CanonicalTOMLConfig.defaults().clipboard
-        historyEnabled = try container.decodeWithDefault(Bool.self, forKey: .historyEnabled, default: d.historyEnabled)
-        maxItems = try container.decodeWithDefault(Int.self, forKey: .maxItems, default: d.maxItems)
-        maxItemBytes = try container.decodeWithDefault(Int.self, forKey: .maxItemBytes, default: d.maxItemBytes)
-        maxTotalBytes = try container.decodeWithDefault(Int.self, forKey: .maxTotalBytes, default: d.maxTotalBytes)
-    }
-}
-
-extension CanonicalTOMLConfig.QuakeTerminal {
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        let d = CanonicalTOMLConfig.defaults().quakeTerminal
-        enabled = try container.decodeWithDefault(Bool.self, forKey: .enabled, default: d.enabled)
-        position = try container.decodeWithDefault(String.self, forKey: .position, default: d.position)
-        widthPercent = try container.decodeWithDefault(Double.self, forKey: .widthPercent, default: d.widthPercent)
-        heightPercent = try container.decodeWithDefault(Double.self, forKey: .heightPercent, default: d.heightPercent)
-        animationDuration = try container.decodeWithDefault(Double.self, forKey: .animationDuration, default: d.animationDuration)
-        autoHide = try container.decodeWithDefault(Bool.self, forKey: .autoHide, default: d.autoHide)
-        opacity = try container.decodeIfPresent(Double.self, forKey: .opacity)
-        monitorMode = try container.decodeIfPresent(String.self, forKey: .monitorMode)
     }
 }
 

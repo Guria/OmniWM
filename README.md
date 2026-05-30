@@ -13,7 +13,6 @@ A scrolling tiling window manager for macOS, built on the Niri column layout par
 - **Focus follows mouse** — optional hover focus
 - **Multi-monitor support** — seamless window management across displays
 - **Overview mode** — bird's-eye view of all windows
-- **Quake terminal** — drop-down terminal with Ghostty integration
 - **Command palette** — fuzzy search for commands
 - **App rules** — per-application layout overrides
 - **IPC** — Unix socket for external control via `nehirctl`

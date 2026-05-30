@@ -82,7 +82,6 @@ private extension String {
     @Test func runtimeStateIsExcludedFromMainSettingsTOML() throws {
         let output = try #require(String(data: SettingsTOMLCodec.encode(SettingsExport.defaults()), encoding: .utf8))
 
-        #expect(output.contains("hiddenBarIsCollapsed") == false)
         #expect(output.contains("commandPaletteLastMode") == false)
         #expect(output.contains("useCustomFrame") == false)
         #expect(output.contains("customFrame") == false)
@@ -153,39 +152,6 @@ private extension String {
         exportEmpty.niriColumnWidthPresets = []
         let decodedEmpty = try SettingsTOMLCodec.decode(try SettingsTOMLCodec.encode(exportEmpty))
         #expect(decodedEmpty.niriColumnWidthPresets == [])
-    }
-
-    @Test func preservesNilOptionalScalarsInQuakeTerminalAndMouseWarp() throws {
-        var export = SettingsExport.defaults()
-        export.mouseWarpAxis = nil
-        export.quakeTerminalOpacity = nil
-        export.quakeTerminalMonitorMode = nil
-        export.niriDefaultColumnWidth = nil
-
-        let decoded = try SettingsTOMLCodec.decode(try SettingsTOMLCodec.encode(export))
-        #expect(decoded.mouseWarpAxis == nil)
-        #expect(decoded.quakeTerminalOpacity == nil)
-        #expect(decoded.quakeTerminalMonitorMode == nil)
-        #expect(decoded.niriDefaultColumnWidth == nil)
-    }
-
-    @Test func roundTripsClipboardSettings() throws {
-        var export = SettingsExport.defaults()
-        export.clipboardHistoryEnabled = true
-        export.clipboardMaxItems = 42
-        export.clipboardMaxItemBytes = 16_384
-        export.clipboardMaxTotalBytes = 65_536
-
-        let data = try SettingsTOMLCodec.encode(export)
-        let output = try #require(String(data: data, encoding: .utf8))
-        #expect(output.contains("[clipboard]"))
-        #expect(output.contains("commandPaletteLastMode") == false)
-
-        let decoded = try SettingsTOMLCodec.decode(data)
-        #expect(decoded.clipboardHistoryEnabled == true)
-        #expect(decoded.clipboardMaxItems == 42)
-        #expect(decoded.clipboardMaxItemBytes == 16_384)
-        #expect(decoded.clipboardMaxTotalBytes == 65_536)
     }
 
     @Test func canonicalDefaultsMatchGoldenFixture() throws {

@@ -78,8 +78,6 @@ enum HotkeyCommand: Codable, Equatable, Hashable {
     case openMenuAnywhere
 
     case toggleWorkspaceBarVisibility
-    case toggleHiddenBar
-    case toggleQuakeTerminal
     case toggleOverview
 
     var displayName: String {

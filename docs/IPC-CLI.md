@@ -346,8 +346,6 @@ Workspace IDs are positive numeric strings. Direct hotkeys stay limited to `1-9`
 | `command open-command-palette` | — | command | Toggle the command palette |
 | `command open-menu-anywhere` | — | command | Open the menu surface |
 | `command toggle-workspace-bar` | — | command | Toggle workspace bar visibility |
-| `command toggle-hidden-bar` | — | command | Toggle the hidden bar surface |
-| `command toggle-quake-terminal` | — | command | Toggle the configured Quake terminal |
 | `command toggle-overview` | — | command | Toggle the overview surface |
 
 ---

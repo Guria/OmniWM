@@ -10,7 +10,7 @@ Nehir's config layout is designed around three priorities: **human readability**
 
 ```
 ~/.config/nehir/
-├── settings.toml          # core behavior: gaps, borders, gestures, clipboard, quake terminal
+├── settings.toml          # core behavior: gaps, borders, gestures
 ├── hotkeys.toml           # all keybindings + modifier trigger
 ├── workspaces.toml        # workspace list with monitor assignments
 ├── apprules.d/            # one file per app rule
@@ -97,13 +97,13 @@ App rules in `apprules.d/` carry an `order` field to preserve specificity orderi
 
 ### 8. No runtime state in config
 
-Runtime state (window restore catalog, quake terminal custom frame, command palette last mode, hidden bar collapsed state) is stored separately in `~/.local/state/nehir/runtime-state.json` — never in the config directory. Your config stays clean and diffable.
+Runtime state (window restore catalog, command palette last mode) is stored separately in `~/.local/state/nehir/runtime-state.json` — never in the config directory. Your config stays clean and diffable.
 
 ## File Reference
 
 | File | Required | Description |
 |------|----------|-------------|
-| `settings.toml` | Yes | Core behavior: general, focus, gaps, niri, borders, workspace bar, gestures, status bar, clipboard, quake terminal, appearance |
+| `settings.toml` | Yes | Core behavior: general, focus, gaps, niri, borders, workspace bar, gestures, status bar, appearance |
 | `hotkeys.toml` | No | Keybindings and modifier trigger. Defaults used if missing. |
 | `workspaces.toml` | No | Workspace list. Built-in defaults used if missing. |
 | `apprules.d/*.toml` | No | Per-app window rules. Empty directory = no rules. |

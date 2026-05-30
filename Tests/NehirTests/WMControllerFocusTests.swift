@@ -50,19 +50,6 @@ private func makeFocusTestWindow(windowId: Int = 101) -> AXWindowRef {
     AXWindowRef(element: AXUIElementCreateSystemWide(), windowId: windowId)
 }
 
-private func makeExternalQuakeRestoreTarget(
-    pid: pid_t,
-    windowId: Int
-) -> QuakeTerminalRestoreTarget {
-    .external(
-        KeyboardFocusTarget(
-            token: WindowToken(pid: pid, windowId: windowId),
-            axRef: AXWindowRef(element: AXUIElementCreateSystemWide(), windowId: windowId),
-            workspaceId: nil,
-            isManaged: false
-        )
-    )
-}
 
 @MainActor
 private func makeRaiseAllFloatingOperations(
@@ -248,17 +235,6 @@ private func waitForFocusRefresh(on controller: WMController) async {
         }
     }
 
-    @Test @MainActor func toggleHiddenBarUpdatesCollapsedStateWithoutEnableGate() {
-        let settings = SettingsStore(defaults: makeFocusTestDefaults())
-        let controller = WMController(settings: settings)
-        settings.hiddenBarIsCollapsed = false
-
-        #expect(settings.hiddenBarIsCollapsed == false)
-
-        controller.toggleHiddenBar()
-
-        #expect(settings.hiddenBarIsCollapsed == true)
-    }
 
     @Test @MainActor func applyPersistedSettingsDisablesViewportAnimationsOnColdStart() {
         let settings = SettingsStore(defaults: makeFocusTestDefaults())
@@ -320,19 +296,6 @@ private func waitForFocusRefresh(on controller: WMController) async {
         #expect(!state.viewOffsetPixels.isAnimating)
     }
 
-    @Test @MainActor func turningAnimationsOffDoesNotForceQuakeTransitionCompletion() {
-        let settings = SettingsStore(defaults: makeFocusTestDefaults())
-        let controller = WMController(settings: settings)
-
-        controller.configureQuakeTransitionForTests(visible: true, isTransitioning: true)
-
-        #expect(controller.quakeTerminalIsTransitioningForTests())
-
-        controller.setAnimationsEnabled(false)
-
-        #expect(controller.motionPolicy.animationsEnabled == false)
-        #expect(controller.quakeTerminalIsTransitioningForTests())
-    }
 
     @Test @MainActor func toggleWorkspaceBarVisibilityHidesOnlyInteractionMonitorAndPreservesSettings() async {
         let primaryMonitor = Monitor(
@@ -412,104 +375,9 @@ private func waitForFocusRefresh(on controller: WMController) async {
         ])
     }
 
-    @Test @MainActor func restoreQuakeTerminalFocusRoutesManagedTargetThroughManagedFronting() {
-        var events: [FocusOperationEvent] = []
-        let operations = WindowFocusOperations(
-            activateApp: { pid in
-                events.append(.activate(pid))
-            },
-            focusSpecificWindow: { pid, windowId, _ in
-                events.append(.focus(pid, windowId))
-            },
-            raiseWindow: { _ in
-                events.append(.raise)
-            }
-        )
-        let (controller, _, handle) = makeFocusTestController(windowFocusOperations: operations)
 
-        controller.restoreQuakeTerminalFocus(to: .managed(handle.id))
 
-        #expect(events == [
-            .activate(getpid()),
-            .focus(getpid(), 101),
-            .raise
-        ])
-    }
 
-    @Test @MainActor func restoreQuakeTerminalFocusFrontsExternalWindowWhenLiveRefExists() {
-        var events: [FocusOperationEvent] = []
-        let operations = WindowFocusOperations(
-            activateApp: { pid in
-                events.append(.activate(pid))
-            },
-            focusSpecificWindow: { pid, windowId, _ in
-                events.append(.focus(pid, windowId))
-            },
-            raiseWindow: { _ in
-                events.append(.raise)
-            }
-        )
-        let (controller, _, _) = makeFocusTestController(windowFocusOperations: operations)
-        let target = makeExternalQuakeRestoreTarget(pid: getpid(), windowId: 181)
-        controller.axEventHandler.axWindowRefProvider = { windowId, pid in
-            guard pid == getpid(), windowId == 181 else { return nil }
-            return AXWindowRef(element: AXUIElementCreateSystemWide(), windowId: Int(windowId))
-        }
-
-        controller.restoreQuakeTerminalFocus(to: target)
-
-        #expect(events == [
-            .activate(getpid()),
-            .focus(getpid(), 181),
-            .raise
-        ])
-    }
-
-    @Test @MainActor func restoreQuakeTerminalFocusFallsBackToAppActivationWhenExternalWindowDisappears() {
-        var events: [FocusOperationEvent] = []
-        let operations = WindowFocusOperations(
-            activateApp: { pid in
-                events.append(.activate(pid))
-            },
-            focusSpecificWindow: { pid, windowId, _ in
-                events.append(.focus(pid, windowId))
-            },
-            raiseWindow: { _ in
-                events.append(.raise)
-            }
-        )
-        let (controller, _, _) = makeFocusTestController(windowFocusOperations: operations)
-
-        controller.restoreQuakeTerminalFocus(
-            to: makeExternalQuakeRestoreTarget(pid: getpid(), windowId: 182)
-        )
-
-        #expect(events == [
-            .activate(getpid())
-        ])
-    }
-
-    @Test @MainActor func restoreQuakeTerminalFocusDoesNothingWhenExternalAppIsGone() {
-        var events: [FocusOperationEvent] = []
-        let operations = WindowFocusOperations(
-            activateApp: { pid in
-                events.append(.activate(pid))
-            },
-            focusSpecificWindow: { pid, windowId, _ in
-                events.append(.focus(pid, windowId))
-            },
-            raiseWindow: { _ in
-                events.append(.raise)
-            }
-        )
-        let (controller, _, _) = makeFocusTestController(windowFocusOperations: operations)
-
-        controller.restoreQuakeTerminalFocus(
-            to: makeExternalQuakeRestoreTarget(pid: getpid() + 999_999, windowId: 183)
-        )
-
-        #expect(events.isEmpty)
-    }
 
     @Test @MainActor func focusWindowStartsPendingFocusButDoesNotConfirmDurableFocus() {
         let operations = WindowFocusOperations(
@@ -1415,82 +1283,6 @@ private func waitForFocusRefresh(on controller: WMController) async {
         #expect(recorder.events.isEmpty)
     }
 
-    @Test @MainActor func toggleFocusedWindowFloatingRetilesTrackedGhosttyFloatingWindow() async {
-        let operations = WindowFocusOperations(
-            activateApp: { _ in },
-            focusSpecificWindow: { _, _, _ in },
-            raiseWindow: { _ in }
-        )
-        let (controller, workspaceId, _) = makeFocusTestController(windowFocusOperations: operations)
-        let ghosttyHandle = addManagedTestWindow(
-            on: controller,
-            pid: 60,
-            windowId: 741,
-            workspaceId: workspaceId,
-            mode: .floating
-        )
-        controller.appInfoCache.storeInfoForTests(pid: 60, bundleId: "com.mitchellh.ghostty")
-        controller.axEventHandler.windowFactsProvider = { _, pid in
-            guard pid == 60 else {
-                return WindowRuleFacts(
-                    appName: "Example",
-                    ax: AXWindowFacts(
-                        role: kAXWindowRole as String,
-                        subrole: kAXStandardWindowSubrole as String,
-                        title: "Example",
-                        hasCloseButton: true,
-                        hasFullscreenButton: true,
-                        fullscreenButtonEnabled: true,
-                        hasZoomButton: true,
-                        hasMinimizeButton: true,
-                        appPolicy: .regular,
-                        bundleId: "com.example.app",
-                        attributeFetchSucceeded: true
-                    ),
-                    sizeConstraints: nil,
-                    windowServer: nil
-                )
-            }
-
-            return WindowRuleFacts(
-                appName: "Ghostty",
-                ax: AXWindowFacts(
-                    role: kAXWindowRole as String,
-                    subrole: kAXStandardWindowSubrole as String,
-                    title: "ghostty",
-                    hasCloseButton: false,
-                    hasFullscreenButton: false,
-                    fullscreenButtonEnabled: nil,
-                    hasZoomButton: false,
-                    hasMinimizeButton: false,
-                    appPolicy: .regular,
-                    bundleId: "com.mitchellh.ghostty",
-                    attributeFetchSucceeded: true
-                ),
-                sizeConstraints: nil,
-                windowServer: nil
-            )
-        }
-        defer { controller.axEventHandler.windowFactsProvider = nil }
-
-        _ = controller.workspaceManager.setManagedFocus(
-            ghosttyHandle.id,
-            in: workspaceId,
-            onMonitor: controller.workspaceManager.monitorId(for: workspaceId)
-        )
-
-        #expect(controller.toggleFocusedWindowFloating() == .executed)
-        await waitForFocusRefresh(on: controller)
-
-        guard let ghosttyEntry = controller.workspaceManager.entry(for: ghosttyHandle) else {
-            Issue.record("Expected tracked Ghostty entry after toggle")
-            return
-        }
-
-        #expect(ghosttyEntry.mode == .tiling)
-        #expect(controller.workspaceManager.manualLayoutOverride(for: ghosttyHandle.id) == .forceTile)
-        #expect(controller.workspaceManager.tiledEntries(in: workspaceId).contains { $0.token == ghosttyHandle.id })
-    }
 
     @Test @MainActor func toggleFocusedWindowFloatingReturnsNotFoundWithoutFocusedTarget() {
         let operations = WindowFocusOperations(

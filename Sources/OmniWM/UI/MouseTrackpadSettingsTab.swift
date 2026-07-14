@@ -43,7 +43,7 @@ struct MouseTrackpadSettingsTab: View {
                 value: $settings.scrollSensitivity,
                 range: 0.1 ... 100.0,
                 step: 0.1,
-                valueText: String(format: "%.1f", settings.scrollSensitivity) + "x"
+                formatter: { String(format: "%.1f", $0) + "x" }
             )
             .disabled(!settings.scrollGestureEnabled)
 

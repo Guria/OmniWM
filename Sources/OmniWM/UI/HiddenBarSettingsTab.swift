@@ -129,7 +129,7 @@ struct HiddenBarSettingsTab: View {
                 value: rehideIntervalBinding,
                 range: 2 ... 30,
                 step: 1,
-                valueText: "\(Int(settings.hiddenBarRehideIntervalSeconds)) s"
+                formatter: { "\(Int($0)) s" }
             )
             SettingsCaption("How long a clicked icon stays revealed. The countdown pauses while its menu is open.")
         }

@@ -61,20 +61,44 @@ struct SettingsSliderRow: View {
     @Binding var value: Double
     let range: ClosedRange<Double>
     let step: Double
-    let valueText: String
+    let formatter: (Double) -> String
     var valueWidth: CGFloat = 56
+    /// Fired when an edit begins/ends. The row commits its own draft on drag end
+    /// regardless, so this is purely for optional side effects.
+    var onEditingChanged: ((Bool) -> Void)? = nil
+
+    /// Buffered while dragging so each tick does not write through to `value`
+    /// (whose `didSet` triggers a synchronous TOML encode + disk write, plus any
+    /// `.onChange` side effects, on the main actor). Committed once on drag end.
+    @State private var draftValue: Double?
+
+    private var effectiveValue: Double {
+        draftValue ?? value
+    }
 
     var body: some View {
         LabeledContent(label) {
             HStack {
-                Slider(value: $value, in: range, step: step) {
+                let displayText = formatter(effectiveValue)
+                Slider(value: Binding(
+                    get: { effectiveValue },
+                    set: { newValue in
+                        draftValue = newValue
+                    }
+                ), in: range, step: step, onEditingChanged: { editing in
+                    if !editing, let draft = draftValue {
+                        value = draft
+                        draftValue = nil
+                    }
+                    onEditingChanged?(editing)
+                }) {
                     Text(label)
                 }
                 .labelsHidden()
                 .accessibilityLabel(label)
-                .accessibilityValue(valueText)
+                .accessibilityValue(displayText)
 
-                SettingsValueText(text: valueText, width: valueWidth)
+                SettingsValueText(text: displayText, width: valueWidth)
             }
         }
     }
@@ -276,8 +300,13 @@ struct OverridableSlider: View {
     let onChange: (Double) -> Void
     let onReset: () -> Void
 
+    /// Buffered while dragging so each tick does not call `onChange` (which writes
+    /// through to the persisted setting, triggering a per-tick TOML encode + disk
+    /// write on the main actor). Committed once on drag end.
+    @State private var draftValue: Double?
+
     private var effectiveValue: Double {
-        value ?? globalValue
+        draftValue ?? value ?? globalValue
     }
 
     private var isOverridden: Bool {
@@ -290,8 +319,15 @@ struct OverridableSlider: View {
                 let displayValue = formatter(effectiveValue)
                 Slider(value: Binding(
                     get: { effectiveValue },
-                    set: { onChange($0) }
-                ), in: range, step: step) {
+                    set: { newValue in
+                        draftValue = newValue
+                    }
+                ), in: range, step: step, onEditingChanged: { editing in
+                    if !editing, let draft = draftValue {
+                        onChange(draft)
+                        draftValue = nil
+                    }
+                }) {
                     Text(label)
                 }
                 .labelsHidden()

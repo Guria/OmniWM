@@ -107,7 +107,7 @@ struct GeneralSettingsTab: View {
                     value: $settings.gapSize,
                     range: 0 ... 32,
                     step: 1,
-                    valueText: "\(Int(settings.gapSize)) px",
+                    formatter: { "\(Int($0)) px" },
                     valueWidth: 64
                 )
                 .onChange(of: settings.gapSize) { _, newValue in
@@ -176,7 +176,7 @@ struct GeneralSettingsTab: View {
                         value: $settings.outerGapLeft,
                         range: 0 ... 64,
                         step: 1,
-                        valueText: "\(Int(settings.outerGapLeft)) px",
+                        formatter: { "\(Int($0)) px" },
                         valueWidth: 64
                     )
                     .onChange(of: settings.outerGapLeft) { _, _ in syncOuterGaps() }
@@ -186,7 +186,7 @@ struct GeneralSettingsTab: View {
                         value: $settings.outerGapRight,
                         range: 0 ... 64,
                         step: 1,
-                        valueText: "\(Int(settings.outerGapRight)) px",
+                        formatter: { "\(Int($0)) px" },
                         valueWidth: 64
                     )
                     .onChange(of: settings.outerGapRight) { _, _ in syncOuterGaps() }
@@ -196,7 +196,7 @@ struct GeneralSettingsTab: View {
                         value: $settings.outerGapTop,
                         range: 0 ... 64,
                         step: 1,
-                        valueText: "\(Int(settings.outerGapTop)) px",
+                        formatter: { "\(Int($0)) px" },
                         valueWidth: 64
                     )
                     .onChange(of: settings.outerGapTop) { _, _ in syncOuterGaps() }
@@ -206,7 +206,7 @@ struct GeneralSettingsTab: View {
                         value: $settings.outerGapBottom,
                         range: 0 ... 64,
                         step: 1,
-                        valueText: "\(Int(settings.outerGapBottom)) px",
+                        formatter: { "\(Int($0)) px" },
                         valueWidth: 64
                     )
                     .onChange(of: settings.outerGapBottom) { _, _ in syncOuterGaps() }
@@ -314,7 +314,7 @@ private struct GlobalNiriSettingsSection: View {
                 ),
                 range: 1 ... 5,
                 step: 1,
-                valueText: "\(settings.niriMaxVisibleColumns)",
+                formatter: { "\(Int($0))" },
                 valueWidth: 32
             )
             .onChange(of: settings.niriMaxVisibleColumns) { _, newValue in

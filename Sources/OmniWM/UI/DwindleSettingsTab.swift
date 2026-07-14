@@ -64,7 +64,7 @@ private struct GlobalDwindleSettingsSection: View {
                 value: $settings.dwindleDefaultSplitRatio,
                 range: 0.1 ... 1.9,
                 step: 0.1,
-                valueText: String(format: "%.1f", settings.dwindleDefaultSplitRatio),
+                formatter: { String(format: "%.1f", $0) },
                 valueWidth: 40
             )
             .onChange(of: settings.dwindleDefaultSplitRatio) { _, newValue in
@@ -77,7 +77,7 @@ private struct GlobalDwindleSettingsSection: View {
                 value: $settings.dwindleSplitWidthMultiplier,
                 range: 0.5 ... 2.0,
                 step: 0.1,
-                valueText: String(format: "%.1f", settings.dwindleSplitWidthMultiplier),
+                formatter: { String(format: "%.1f", $0) },
                 valueWidth: 40
             )
             .onChange(of: settings.dwindleSplitWidthMultiplier) { _, newValue in

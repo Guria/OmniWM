@@ -108,7 +108,7 @@ private struct GlobalBarSettingsSection: View {
                         value: $settings.workspaceBarRevealHoldMilliseconds,
                         range: 0 ... 1000,
                         step: 50,
-                        valueText: "\(Int(settings.workspaceBarRevealHoldMilliseconds)) ms"
+                        formatter: { "\(Int($0)) ms" }
                     )
                     .onChange(of: settings.workspaceBarRevealHoldMilliseconds) { _, _ in
                         controller.updateWorkspaceBarSettings()
@@ -137,7 +137,7 @@ private struct GlobalBarSettingsSection: View {
                         value: $settings.workspaceBarNotchActiveZoneWidth,
                         range: 100 ... 400,
                         step: 10,
-                        valueText: "\(Int(settings.workspaceBarNotchActiveZoneWidth)) px"
+                        formatter: { "\(Int($0)) px" }
                     )
                     .onChange(of: settings.workspaceBarNotchActiveZoneWidth) { _, _ in
                         controller.updateWorkspaceBarSettings()
@@ -198,7 +198,7 @@ private struct GlobalBarSettingsSection: View {
                     value: $settings.workspaceBarHeight,
                     range: 20 ... 40,
                     step: 2,
-                    valueText: "\(Int(settings.workspaceBarHeight)) px"
+                    formatter: { "\(Int($0)) px" }
                 )
                 .onChange(of: settings.workspaceBarHeight) { _, _ in
                     controller.updateWorkspaceBarSettings()
@@ -209,7 +209,7 @@ private struct GlobalBarSettingsSection: View {
                     value: $settings.workspaceBarBackgroundOpacity,
                     range: 0 ... 0.5,
                     step: 0.05,
-                    valueText: "\(Int(settings.workspaceBarBackgroundOpacity * 100))%"
+                    formatter: { "\(Int($0 * 100))%" }
                 )
                 .onChange(of: settings.workspaceBarBackgroundOpacity) { _, _ in
                     controller.updateWorkspaceBarSettings()

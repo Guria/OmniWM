@@ -16,7 +16,7 @@ struct OverviewSettingsTab: View {
                     value: $settings.overviewZoom,
                     range: 0.5 ... 1.5,
                     step: 0.05,
-                    valueText: "\(Int((settings.overviewZoom * 100).rounded()))%"
+                    formatter: { "\(Int(($0 * 100).rounded()))%" }
                 )
                 .onChange(of: settings.overviewZoom) { _, _ in
                     scheduleUpdate()

@@ -35,7 +35,7 @@ struct QuakeTerminalSettingsTab: View {
                         value: $settings.quakeTerminalWidthPercent,
                         range: 10 ... 100,
                         step: 5,
-                        valueText: "\(Int(settings.quakeTerminalWidthPercent))%"
+                        formatter: { "\(Int($0))%" }
                     )
 
                     SettingsSliderRow(
@@ -43,7 +43,7 @@ struct QuakeTerminalSettingsTab: View {
                         value: $settings.quakeTerminalHeightPercent,
                         range: 10 ... 100,
                         step: 5,
-                        valueText: "\(Int(settings.quakeTerminalHeightPercent))%"
+                        formatter: { "\(Int($0))%" }
                     )
 
                     if settings.quakeTerminalUseCustomFrame {
@@ -59,7 +59,7 @@ struct QuakeTerminalSettingsTab: View {
                         value: $settings.quakeTerminalOpacity,
                         range: 0.1 ... 1.0,
                         step: 0.05,
-                        valueText: "\(Int(settings.quakeTerminalOpacity * 100))%"
+                        formatter: { "\(Int($0 * 100))%" }
                     )
                     .onChange(of: settings.quakeTerminalOpacity) { _, _ in
                         controller.reloadQuakeTerminalOpacity()
@@ -72,7 +72,7 @@ struct QuakeTerminalSettingsTab: View {
                         value: $settings.quakeTerminalAnimationDuration,
                         range: 0 ... 1,
                         step: 0.1,
-                        valueText: "\(String(format: "%.1f", settings.quakeTerminalAnimationDuration))s"
+                        formatter: { "\(String(format: "%.1f", $0))s" }
                     )
                     .disabled(!controller.motionPolicy.animationsEnabled)
 
